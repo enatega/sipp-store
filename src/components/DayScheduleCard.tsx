@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Text from "./Text";
 import ToggleSwitch from "./ToggleSwitch";
 import { useAppTheme } from "../theme/ThemeProvider";
+import TimePickerModal from "./TimePickerModal";
 
 export type TimeSlot = {
   open: string;
@@ -33,6 +34,10 @@ export default function DayScheduleCard({
   onRemoveSlot,
 }: Props) {
   const { theme } = useAppTheme();
+  const [editingSlot, setEditingSlot] = useState<{
+    index: number;
+    field: "open" | "close";
+  } | null>(null);
   // Format day for display: capitalize first letter, show first 3 letters
   const dayLabel = day.charAt(0).toUpperCase() + day.slice(1, 3);
 
@@ -70,9 +75,8 @@ export default function DayScheduleCard({
                     backgroundColor: theme.colors.background,
                   },
                 ]}
-                onPress={() => {
-                  /* time picker will go here */
-                }}
+                accessibilityRole="button"
+                onPress={() => setEditingSlot({ index: idx, field: "open" })}
               >
                 <Text
                   variant="body"
@@ -93,9 +97,8 @@ export default function DayScheduleCard({
                     backgroundColor: theme.colors.background,
                   },
                 ]}
-                onPress={() => {
-                  /* time picker will go here */
-                }}
+                accessibilityRole="button"
+                onPress={() => setEditingSlot({ index: idx, field: "close" })}
               >
                 <Text
                   variant="body"
@@ -148,6 +151,22 @@ export default function DayScheduleCard({
           )}
         </View>
       )}
+
+      <TimePickerModal
+        value={
+          editingSlot
+            ? slots[editingSlot.index]?.[editingSlot.field] ?? "00:00"
+            : "00:00"
+        }
+        visible={editingSlot !== null}
+        onClose={() => setEditingSlot(null)}
+        onConfirm={(value) => {
+          if (editingSlot) {
+            onSlotChange(editingSlot.index, editingSlot.field, value);
+          }
+          setEditingSlot(null);
+        }}
+      />
     </View>
   );
 }

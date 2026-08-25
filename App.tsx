@@ -1,5 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { Platform, StyleSheet, View } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +11,22 @@ import { LocalizationProvider } from './src/localization/LocalizationProvider';
 import { AuthProvider } from './src/auth/AuthProvider';
 import './src/localization/i18n';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 function ThemedApp() {
   const { theme } = useAppTheme();
+
+  React.useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(() => undefined);
+    return () => subscription.remove();
+  }, []);
 
   React.useEffect(() => {
     if (Platform.OS !== 'android') {

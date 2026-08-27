@@ -41,6 +41,7 @@ export default function ReadyPickupSection({
 }: Props) {
     const { t } = useTranslations("app");
     const isReady = status === OrderStatus.READY;
+    const isPickedUp = status === OrderStatus.PICKED_UP;
     const handleCallRider = () => {
         if (!riderPhone) return;
         Linking.openURL(`tel:${riderPhone}`);
@@ -82,7 +83,7 @@ export default function ReadyPickupSection({
                 </View>
             )}
 
-            {showConfirmButton && isReady && (
+            {showConfirmButton && (isReady || isPickedUp) && (
                 <Pressable
                     style={[styles.btnConfirmPickup, { backgroundColor: theme.colors.primary }, isConfirmingPickup && { opacity: 0.6 }]}
                     onPress={() => onConfirmPickup?.(orderId)}
@@ -96,7 +97,7 @@ export default function ReadyPickupSection({
                                 <Feather name="check" size={12} color={theme.colors.buttonText} />
                             </View>
                             <Text style={[styles.btnConfirmPickupText, { color: theme.colors.buttonText }]}>
-                                {t("order_card_confirm_pickup")}
+                                {t(isPickedUp ? "order_card_mark_delivered" : "order_card_confirm_pickup")}
                             </Text>
                         </View>
                     )}

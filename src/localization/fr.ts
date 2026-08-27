@@ -111,6 +111,7 @@ const fr = {
   order_card_heading_customer: "En route vers le client",
   order_card_order_status: "Statut de commande :",
   order_card_confirm_pickup: "Confirmer le ramassage",
+  order_card_mark_delivered: "Marquer comme livrée",
   order_card_rider_name: "Nom du livreur",
   order_card_payment_method: "Méthode de paiement",
   order_card_date_time: "Date et heure",

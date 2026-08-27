@@ -249,17 +249,42 @@ function invalidateStoreTabsForOrderStatus(
   const statusToKeys: Record<string, Array<readonly unknown[]>> = {
     [StoreOrderStatus.SCHEDULED]: [newOrdersKeys.lists()],
     [StoreOrderStatus.PENDING]: [newOrdersKeys.lists()],
-    [StoreOrderStatus.ACCEPTED]: [inProgressOrdersKeys.lists()],
+    [StoreOrderStatus.ACCEPTED]: [
+      newOrdersKeys.lists(),
+      inProgressOrdersKeys.lists(),
+    ],
     [StoreOrderStatus.PREPARING]: [inProgressOrdersKeys.lists()],
     [StoreOrderStatus.RIDER_ASSIGNED]: [inProgressOrdersKeys.lists()],
-    [StoreOrderStatus.READY]: [readyOrdersKeys.lists()],
-    [StoreOrderStatus.PICKED_UP]: [pickupOrdersKeys.lists()],
+    [StoreOrderStatus.READY]: [
+      inProgressOrdersKeys.lists(),
+      readyOrdersKeys.lists(),
+    ],
+    [StoreOrderStatus.PICKED_UP]: [
+      readyOrdersKeys.lists(),
+      pickupOrdersKeys.lists(),
+    ],
     [StoreOrderStatus.OUT_FOR_DELIVERY]: [pickupOrdersKeys.lists()],
     [StoreOrderStatus.ARRIVED]: [pickupOrdersKeys.lists()],
-    [StoreOrderStatus.DELIVERED]: [completedOrdersKeys.lists()],
-    [StoreOrderStatus.CANCELLED]: [completedOrdersKeys.lists()],
-    [StoreOrderStatus.REJECTED]: [completedOrdersKeys.lists()],
-    [StoreOrderStatus.FAILED]: [completedOrdersKeys.lists()],
+    [StoreOrderStatus.DELIVERED]: [
+      pickupOrdersKeys.lists(),
+      completedOrdersKeys.lists(),
+    ],
+    [StoreOrderStatus.CANCELLED]: [
+      newOrdersKeys.lists(),
+      inProgressOrdersKeys.lists(),
+      readyOrdersKeys.lists(),
+      pickupOrdersKeys.lists(),
+      completedOrdersKeys.lists(),
+    ],
+    [StoreOrderStatus.REJECTED]: [
+      newOrdersKeys.lists(),
+      inProgressOrdersKeys.lists(),
+      completedOrdersKeys.lists(),
+    ],
+    [StoreOrderStatus.FAILED]: [
+      pickupOrdersKeys.lists(),
+      completedOrdersKeys.lists(),
+    ],
   };
 
   const impactedKeys = statusToKeys[status] ?? [

@@ -89,6 +89,7 @@ export function useUpdateOrderStatus(
       queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
       queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
       queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
       options?.onSuccess?.(response, variables, onMutateResult, context);
     },
     ...options,

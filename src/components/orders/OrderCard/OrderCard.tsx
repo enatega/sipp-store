@@ -122,7 +122,7 @@ export default function OrderCard({
     || order.riderVehicle
     || order.status === OrderStatus.RIDER_ASSIGNED,
   );
-  const canMarkReady = hasAssignedRider;
+  const canMarkReady = order.orderType === "pickup" || hasAssignedRider;
   const headerStatusLabel =
     (order.status === OrderStatus.DELIVERED
       ? t("order_card_delivered")
@@ -199,7 +199,12 @@ export default function OrderCard({
           unreadMessagesCount={unreadMessagesCount}
           onOpenChat={handleOpenChat}
           onConfirmPickup={onConfirmPickup}
-          showConfirmButton={order.status === OrderStatus.READY && !!onConfirmPickup}
+          showConfirmButton={
+            (order.status === OrderStatus.READY ||
+              (order.orderType === "pickup" &&
+                order.status === OrderStatus.PICKED_UP)) &&
+            !!onConfirmPickup
+          }
           isConfirmingPickup={isConfirmingPickup}
           theme={theme}
         />

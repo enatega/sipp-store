@@ -129,6 +129,7 @@ const en = {
   order_card_heading_customer: "Heading to Customer",
   order_card_order_status: "Order Status:",
   order_card_confirm_pickup: "Confirm Pickup",
+  order_card_mark_delivered: "Mark as Delivered",
   order_card_rider_name: "Rider Name",
   order_card_payment_method: "Payment method",
   order_card_date_time: "Date & Time",

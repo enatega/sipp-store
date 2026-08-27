@@ -4,6 +4,7 @@ import { useNewOrders } from "../../hooks/useOrderQueries";
 import {
   useAcceptOrder,
   useRejectOrder,
+  useUpdateOrderStatus,
   useUpdatePreparingTime,
 } from "../../hooks/useOrderMutations";
 import SetPreparingTimeModal from "../../components/SetPreparingTimeModal";
@@ -19,6 +20,7 @@ export default function NewOrdersScreen() {
 
   const acceptMutation = useAcceptOrder();
   const rejectMutation = useRejectOrder();
+  const updateStatusMutation = useUpdateOrderStatus();
   const updateTimeMutation = useUpdatePreparingTime();
 
   const handleAccept = (orderId: string) => {
@@ -66,6 +68,11 @@ export default function NewOrdersScreen() {
       await acceptMutation.mutateAsync(orderId);
       console.log("[NewOrdersScreen] Accept order success", { orderId });
 
+      await updateStatusMutation.mutateAsync({
+        orderId,
+        data: { status: OrderStatus.PREPARING },
+      });
+
       console.log("[NewOrdersScreen] Setting preparing time", {
         orderId,
         preparingTimeInMinutes: minutes,
@@ -98,7 +105,10 @@ export default function NewOrdersScreen() {
   const renderActions = (order: Order) => ({
     onAccept: handleAccept,
     onReject: () => handleReject(order.orderId, order.orderCode),
-    isAccepting: acceptMutation.isPending || updateTimeMutation.isPending,
+    isAccepting:
+      acceptMutation.isPending ||
+      updateStatusMutation.isPending ||
+      updateTimeMutation.isPending,
     isRejecting: rejectMutation.isPending,
   });
 

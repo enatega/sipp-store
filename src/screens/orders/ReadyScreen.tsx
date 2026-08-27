@@ -2,7 +2,7 @@ import React from "react";
 import GenericOrderList from "../../components/orders/GenericOrderList";
 import { useReadyOrders } from "../../hooks/useOrderQueries";
 import { useUpdateOrderStatus } from "../../hooks/useOrderMutations";
-import { OrderStatus } from "../../api/orderServicesTypes";
+import { Order, OrderStatus } from "../../api/orderServicesTypes";
 
 export default function ReadyScreen() {
   const updateStatus = useUpdateOrderStatus();
@@ -11,10 +11,13 @@ export default function ReadyScreen() {
     updateStatus.mutate({ orderId, data: { status: OrderStatus.PICKED_UP } });
   };
 
-  const renderActions = () => ({
-    onConfirmPickup: handleConfirmPickup,
-    isConfirmingPickup: updateStatus.isPending,
-  });
+  const renderActions = (order: Order) =>
+    order.orderType === "pickup"
+      ? {
+          onConfirmPickup: handleConfirmPickup,
+          isConfirmingPickup: updateStatus.isPending,
+        }
+      : {};
 
   return (
     <GenericOrderList

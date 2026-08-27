@@ -4,6 +4,7 @@ import Text from './Text';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { EarningsHistoryItem } from '../api/earningsServiceTypes';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { useTranslations } from '../localization/LocalizationProvider';
 
 type Props = {
   item: EarningsHistoryItem;
@@ -16,6 +17,7 @@ type Props = {
 export default function EarningsOrderCard({ item }: Props) {
   const { theme } = useAppTheme();
   const { formatAmount } = useCurrencyFormatter();
+  const { t } = useTranslations('app');
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -23,10 +25,10 @@ export default function EarningsOrderCard({ item }: Props) {
       {/* Row 1: Order ID + status badge */}
       <View style={styles.topRow}>
         <Text variant="body" color={theme.colors.text}>
-          Order ID{' '}
-          {/* <Text variant="body" weight="semiBold" color={theme.colors.text}>
-            {item.order_id}
-          </Text> */}
+          {t('earnings_order_id')}{' '}
+          <Text variant="body" weight="semiBold" color={theme.colors.text}>
+            #{item.order_id.split('-')[0].toUpperCase()}
+          </Text>
         </Text> 
         <View style={[styles.badge, { backgroundColor: theme.colors.tertiary }]}>
           <Text variant="caption" color={theme.colors.primary} style={styles.badgeText}>
@@ -41,7 +43,7 @@ export default function EarningsOrderCard({ item }: Props) {
       {/* Row 2: Payment */}
       <View style={styles.paymentRow}>
         <Text variant="body" color={theme.colors.text}>
-          Payment
+          {t('earnings_customer_payment')}
         </Text>
         <Text variant="body" weight="bold" color={theme.colors.text}>
           {formatAmount(item.payment_amount, 2)}
@@ -59,7 +61,7 @@ export default function EarningsOrderCard({ item }: Props) {
         accessibilityLabel="Toggle order details"
       >
         <Text variant="body" color={theme.colors.text}>
-          Order Details
+          {t('earnings_order_details')}
         </Text>
         <View
           style={[
@@ -73,9 +75,30 @@ export default function EarningsOrderCard({ item }: Props) {
       {/* Expanded details placeholder */}
       {expanded && (
         <View style={[styles.expandedContent, { borderTopColor: theme.colors.gray200 }]}>
-          <Text variant="caption" color={theme.colors.mutedText}>
-            {item.label}
-          </Text>
+          <View style={styles.detailRow}>
+            <Text variant="caption" color={theme.colors.mutedText}>
+              {t('earnings_admin_commission')}
+            </Text>
+            <Text variant="caption" color={theme.colors.text}>
+              -{formatAmount(item.commission_amount, 2)}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text variant="caption" color={theme.colors.mutedText}>
+              {t('earnings_rider_earnings')}
+            </Text>
+            <Text variant="caption" color={theme.colors.text}>
+              -{formatAmount(item.rider_earnings, 2)}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text variant="body" weight="bold" color={theme.colors.text}>
+              {t('earnings_store_net')}
+            </Text>
+            <Text variant="body" weight="bold" color={theme.colors.text}>
+              {formatAmount(item.net_earnings, 2)}
+            </Text>
+          </View>
           <Text variant="caption" color={theme.colors.mutedText}>
             {item.created_at}
           </Text>
@@ -138,5 +161,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

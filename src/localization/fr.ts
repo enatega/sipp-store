@@ -186,6 +186,12 @@ const fr = {
   wallet_withdrawal_failed: "Échec du retrait",
   earnings_no_recent_activity: "Aucune activité récente",
   earnings_activity_will_appear: "Votre activité de gains apparaîtra ici.",
+  earnings_order_id: "ID de commande",
+  earnings_customer_payment: "Paiement client",
+  earnings_order_details: "Détails de la commande",
+  earnings_admin_commission: "Commission administrateur",
+  earnings_rider_earnings: "Gains du livreur",
+  earnings_store_net: "Gains nets du magasin",
 
   Loading: "Chargement...",
   updating: "Mise à jour...",

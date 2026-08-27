@@ -50,6 +50,8 @@ export interface EarningsDailyResponse {
 
 export interface EarningsSummaryResponse {
   total_orders: number;
+  total_payments: number;
+  total_commission: number;
   total_earnings: number;
   start_date: string;
   end_date: string;
@@ -58,6 +60,9 @@ export interface EarningsSummaryResponse {
 export interface EarningsHistoryItem {
   order_id: string;
   payment_amount: number;
+  commission_amount: number;
+  rider_earnings: number;
+  net_earnings: number;
   status: string;
   created_at: string;
   label: string;

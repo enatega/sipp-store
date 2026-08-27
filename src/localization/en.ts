@@ -188,6 +188,12 @@ const en = {
   wallet_withdrawal_failed: "Withdrawal Failed",
   earnings_no_recent_activity: "No recent activity",
   earnings_activity_will_appear: "Your earnings activity will appear here.",
+  earnings_order_id: "Order ID",
+  earnings_customer_payment: "Customer payment",
+  earnings_order_details: "Order details",
+  earnings_admin_commission: "Admin commission",
+  earnings_rider_earnings: "Rider earnings",
+  earnings_store_net: "Store net earnings",
 
   Loading: 'Loading...',
   updating: 'Updating...',

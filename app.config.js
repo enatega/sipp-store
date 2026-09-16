@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "EnategaDeliveriesStoreApp",
+    name: "Sip Store",
     slug: "enatega-deliveries-store-app",
     owner: "ninjas_code",
     version: "1.0.0",
@@ -8,13 +8,23 @@ module.exports = {
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
+      image: "./assets/splash-light.png",
+      resizeMode: "cover",
       backgroundColor: "#ffffff",
     },
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.enatega.deliveries.store",
+      splash: {
+        image: "./assets/splash-light.png",
+        resizeMode: "cover",
+        backgroundColor: "#ffffff",
+        dark: {
+          image: "./assets/splash-dark.png",
+          resizeMode: "cover",
+          backgroundColor: "#ffffff",
+        },
+      },
       infoPlist: {
         UIBackgroundModes: ["audio"],
       },
@@ -23,6 +33,16 @@ module.exports = {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
+      },
+      splash: {
+        image: "./assets/splash-light.png",
+        resizeMode: "cover",
+        backgroundColor: "#ffffff",
+        dark: {
+          image: "./assets/splash-dark.png",
+          resizeMode: "cover",
+          backgroundColor: "#ffffff",
+        },
       },
       googleServicesFile: "./google-services.json",
       package: "com.enatega.deliveries.store",

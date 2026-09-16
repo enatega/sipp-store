@@ -1,5 +1,5 @@
 const en = {
-  app_name: "Enatega Deliveries Store App",
+  app_name: "Sip Store",
   welcome_title: "Store Partner Workspace",
   welcome_subtitle:
     "Theme, localization, and reusable base components are ready.",

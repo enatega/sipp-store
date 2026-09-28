@@ -37,13 +37,13 @@ async function getPushTokenInternal(): Promise<string | null> {
     let status = permissions.status;
     console.log("[PushToken] existing permission status", status);
 
-    if (status !== "granted") {
+    if (status !== "granted" && permissions.ios?.status !== Notifications.IosAuthorizationStatus.PROVISIONAL) {
       const requested = await Notifications.requestPermissionsAsync();
       status = requested.status;
       console.log("[PushToken] requested permission status", status);
     }
 
-    if (status !== "granted") {
+    if (status !== "granted" && (await Notifications.getPermissionsAsync()).ios?.status !== Notifications.IosAuthorizationStatus.PROVISIONAL) {
       console.log("[PushToken] permission denied, returning null token");
       return null;
     }
@@ -59,18 +59,7 @@ async function getPushTokenInternal(): Promise<string | null> {
       return response.data;
     }
 
-    console.log("[PushToken] Expo token empty, trying native device token fallback");
-    const deviceTokenResponse = await Notifications.getDevicePushTokenAsync();
-    const nativeToken =
-      typeof deviceTokenResponse.data === "string"
-        ? deviceTokenResponse.data
-        : JSON.stringify(deviceTokenResponse.data);
-
-    console.log("[PushToken] native token fallback result", {
-      hasToken: Boolean(nativeToken),
-      type: deviceTokenResponse.type,
-    });
-    return nativeToken || null;
+    return null;
   } catch (error) {
     console.log("[PushToken] failed to fetch token", error);
     return null;
@@ -91,7 +80,6 @@ export async function getExpoPushTokenForAuth(): Promise<string | null> {
     if (token) {
       cachedToken = token;
     }
-    console.log("Expo Push Token for Auth:", token);
     return token;
   } finally {
     inFlightTokenPromise = null;

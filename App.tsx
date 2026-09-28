@@ -9,6 +9,9 @@ import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 import QueryProvider from './src/providers/QueryProvider';
 import { LocalizationProvider } from './src/localization/LocalizationProvider';
 import { AuthProvider } from './src/auth/AuthProvider';
+import { usePushTokenSync } from './src/hooks/usePushTokenSync';
+import { queueOrderNotificationNavigation } from './src/navigation/notificationNavigation';
+import { useQueryClient } from '@tanstack/react-query';
 import './src/localization/i18n';
 
 Notifications.setNotificationHandler({
@@ -22,11 +25,25 @@ Notifications.setNotificationHandler({
 
 function ThemedApp() {
   const { theme } = useAppTheme();
+  usePushTokenSync();
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
-    const subscription = Notifications.addNotificationReceivedListener(() => undefined);
-    return () => subscription.remove();
-  }, []);
+    const received = Notifications.addNotificationReceivedListener(() => {
+      void queryClient.invalidateQueries({ queryKey: ['store-notifications'] });
+      void queryClient.invalidateQueries({ queryKey: ['store-notification-count'] });
+    });
+    const openOrder = (response: Notifications.NotificationResponse | null) => {
+      queueOrderNotificationNavigation(response?.notification.request.content.data?.orderId);
+    };
+    const opened = Notifications.addNotificationResponseReceivedListener(openOrder);
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      openOrder(response);
+      void Notifications.clearLastNotificationResponseAsync();
+    }).catch(() => undefined);
+    return () => { received.remove(); opened.remove(); };
+  }, [queryClient]);
 
   React.useEffect(() => {
     if (Platform.OS !== 'android') {

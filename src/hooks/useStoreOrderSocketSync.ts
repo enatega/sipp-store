@@ -9,6 +9,7 @@ import {
   newOrdersKeys,
   pickupOrdersKeys,
   readyOrdersKeys,
+  supportChatKeys,
 } from "../api/queryKeys";
 import type {
   GetOrdersParams,
@@ -196,10 +197,24 @@ export function useStoreOrderSocketSync() {
       },
     );
 
+    const unsubscribeChat = storeOrdersSocketClient.onReceiveMessage(() => {
+      void queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+    });
+    const unsubscribeChatRead = storeOrdersSocketClient.subscribeOrderChatRead(() => {
+      void queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+    });
+    const unsubscribeNotifications = storeOrdersSocketClient.subscribeNotificationCreated(() => {
+      void queryClient.invalidateQueries({ queryKey: ['store-notifications'] });
+      void queryClient.invalidateQueries({ queryKey: ['store-notification-count'] });
+    });
+
     return () => {
       unsubscribeCreated();
       unsubscribeOrderStatus();
       unsubscribeRiderStatus();
+      unsubscribeChat();
+      unsubscribeChatRead();
+      unsubscribeNotifications();
       pendingAlertOrderIdsRef.current.clear();
       void stopOrderAlertLoop();
     };
@@ -223,6 +238,15 @@ export function useStoreOrderSocketSync() {
 
       if (nextState === "active") {
         storeOrdersSocketClient.connect();
+        queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
+        queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+        queryClient.invalidateQueries({ queryKey: supportChatKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['store-notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['store-notification-count'] });
       }
     });
 
@@ -230,13 +254,21 @@ export function useStoreOrderSocketSync() {
       const isReachable = state.isConnected && state.isInternetReachable !== false;
       if (!isReachable || appState !== "active") return;
       storeOrdersSocketClient.connect();
+      queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+      queryClient.invalidateQueries({ queryKey: supportChatKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['store-notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['store-notification-count'] });
     });
 
     return () => {
       appStateSubscription.remove();
       netInfoSubscription();
     };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, queryClient, token]);
 }
 
 function invalidateStoreTabsForOrderStatus(

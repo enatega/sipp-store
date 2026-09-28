@@ -33,6 +33,28 @@ export function useSupportChatMessagesQuery({
   });
 }
 
+export function useStoreOrderChatQuery(orderId: string) {
+  return useQuery({
+    queryKey: supportChatKeys.order(orderId),
+    queryFn: () => supportChatService.getOrderChat(orderId),
+    enabled: Boolean(orderId),
+    staleTime: 10_000,
+  });
+}
+
+export function useStoreOrderChatUnreadQuery() {
+  return useQuery({
+    queryKey: supportChatKeys.unread(),
+    queryFn: () => supportChatService.getOrderUnreadCounts(),
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarkStoreOrderChatReadMutation() {
+  return useMutation({ mutationFn: (orderId: string) => supportChatService.markOrderChatRead(orderId) });
+}
+
 export function useSendSupportChatMessageMutation(
   options?: UseMutationOptions<SendSupportChatMessageResponse, ApiError, SendSupportChatMessageRequest>,
 ) {

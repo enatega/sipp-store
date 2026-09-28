@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -7,17 +7,17 @@ import { useTranslations } from "../../../localization/LocalizationProvider";
 import { Order, OrderStatus } from "../../../api/orderServicesTypes";
 import { MainStackParamList } from "../../../navigation/types";
 import { styles } from "./styles";
-import Text from "../../Text";
 import OrderHeader from "./OrderHeader";
 import CustomerInfo from "./CustomerInfo";
 import OrderItems from "./OrderItems";
 import CommentSection from "./CommentSection";
 import InProgressSection from "./InProgressSection";
 import ReadyPickupSection from "./ReadyPickupSection";
-import CompletedSection from "./CompletedSection";
 import AcceptRejectButtons from "./AcceptRejectButtons";
+import RiderContactPanel from "./RiderContactPanel";
 import { getReadableRiderStatus } from "./riderStatusLabel";
 import { resolveSupportChatBoxId } from "../../../api/supportChatSession";
+import { useStoreOrderChatUnreadQuery } from "../../../hooks/useSupportChat";
 
 type Props = {
   order: Order;
@@ -49,6 +49,7 @@ export default function OrderCard({
   const { theme } = useAppTheme();
   const { t } = useTranslations("app");
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const chatUnreadQuery = useStoreOrderChatUnreadQuery();
   const orderWithMeta = order as Order & Record<string, unknown>;
   const unreadMessagesCountRaw =
     orderWithMeta.unreadMessages ??
@@ -56,7 +57,7 @@ export default function OrderCard({
     orderWithMeta.chatUnreadCount ??
     orderWithMeta.chat_unread_count ??
     0;
-  const unreadMessagesCount = Number(unreadMessagesCountRaw) || 0;
+  const unreadMessagesCount = chatUnreadQuery.data?.byOrderId?.[order.orderId] ?? (Number(unreadMessagesCountRaw) || 0);
   const chatBoxId = getFirstString(orderWithMeta, [
     "chatBoxId",
     "chat_box_id",
@@ -75,10 +76,7 @@ export default function OrderCard({
   ]);
   const riderVehicleDisplay = resolveRiderVehicle(orderWithMeta);
   const handleOpenChat = () => {
-    const resolvedChatBoxId = chatBoxId ?? resolveSupportChatBoxId({
-      receiverId,
-      orderId: order.orderId,
-    });
+    const resolvedChatBoxId = order.orderId ? null : chatBoxId ?? resolveSupportChatBoxId({ receiverId });
 
     const params = {
       chatBoxId: resolvedChatBoxId ?? null,
@@ -86,7 +84,6 @@ export default function OrderCard({
       riderName: order.riderName ?? null,
       orderId: order.orderId,
     };
-    console.log("[OrderCard] openChat", params);
     navigation.navigate("StoreChat", params);
   };
 
@@ -108,7 +105,6 @@ export default function OrderCard({
     order.status === OrderStatus.OUT_FOR_DELIVERY ||
     order.status === OrderStatus.ARRIVED;
 
-  const isCompleted = order.status === OrderStatus.DELIVERED;
   const isNewOrderActionable =
     order.status === OrderStatus.PENDING || order.status === OrderStatus.SCHEDULED;
   const canAcceptOrder =
@@ -127,11 +123,11 @@ export default function OrderCard({
     (order.status === OrderStatus.DELIVERED
       ? t("order_card_delivered")
       : order.status === OrderStatus.READY
-      ? "Rider assigned"
+      ? t("order_card_ready_for_pickup")
       : getReadableRiderStatus(order.status, order.riderStatus, order.riderStatusLabel)) ||
-    (order.riderArrived ? t("order_card_rider_arrived") : null);
+    (order.riderArrived ? t("order_card_rider_arrived") : null) || order.statusLabel;
   const headerStatusTone =
-    order.status === OrderStatus.READY || order.riderArrived
+    order.status === OrderStatus.READY || order.status === OrderStatus.DELIVERED || order.riderArrived
       ? "green"
       : order.status === OrderStatus.PICKED_UP
         || order.status === OrderStatus.OUT_FOR_DELIVERY
@@ -140,12 +136,13 @@ export default function OrderCard({
         : "blue";
 
   return (
-    <View style={[styles.card, { backgroundColor: "#F9FAFB", borderColor: theme.colors.gray200 }]}>
+    <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gray200, shadowColor: theme.colors.shadow }]}>
       <OrderHeader
         orderCode={order.orderCode}
+        orderType={order.orderType}
         status={order.status}
         createdAt={order.createdAt}
-        headerStatusLabel={isInProgress || isReadyOrPickup || isCompleted ? headerStatusLabel : null}
+        headerStatusLabel={headerStatusLabel}
         headerStatusTone={headerStatusTone}
       />
       <CustomerInfo
@@ -163,17 +160,20 @@ export default function OrderCard({
       />
       <CommentSection comment={order.restaurantNote} theme={theme} />
 
+      {hasAssignedRider && order.orderType === "delivery" ? (
+        <RiderContactPanel
+          name={order.riderName}
+          vehicle={riderVehicleDisplay}
+          phone={order.riderPhone}
+          status={getReadableRiderStatus(null, order.riderStatus, order.riderStatusLabel)}
+          unreadCount={unreadMessagesCount}
+          onChat={handleOpenChat}
+        />
+      ) : null}
+
       {isInProgress && onMarkReady && onUpdatePreparingTime && (
         <InProgressSection
           orderId={order.orderId}
-          riderArrived={order.riderArrived}
-          riderStatus={order.riderStatus}
-          riderStatusLabel={order.riderStatusLabel}
-          riderName={order.riderName}
-          riderPhone={order.riderPhone}
-          riderVehicle={riderVehicleDisplay}
-          unreadMessagesCount={unreadMessagesCount}
-          onOpenChat={handleOpenChat}
           preparingTimeInMinutes={order.preparingTimeInMinutes ?? 0}
           remainingSeconds={order.remainingSeconds ?? null}
           startTime={startTime}
@@ -190,14 +190,6 @@ export default function OrderCard({
         <ReadyPickupSection
           status={order.status}
           orderId={order.orderId}
-          riderArrived={order.riderArrived}
-          riderStatus={order.riderStatus}
-          riderStatusLabel={order.riderStatusLabel}
-          riderName={order.riderName}
-          riderVehicle={riderVehicleDisplay}
-          riderPhone={order.riderPhone}
-          unreadMessagesCount={unreadMessagesCount}
-          onOpenChat={handleOpenChat}
           onConfirmPickup={onConfirmPickup}
           showConfirmButton={
             (order.status === OrderStatus.READY ||
@@ -206,18 +198,6 @@ export default function OrderCard({
             !!onConfirmPickup
           }
           isConfirmingPickup={isConfirmingPickup}
-          theme={theme}
-        />
-      )}
-
-      {isCompleted && (
-        <CompletedSection
-          riderName={order.riderName}
-          riderPhone={order.riderPhone}
-          riderVehicle={riderVehicleDisplay}
-          createdAt={order.createdAt}
-          unreadMessagesCount={unreadMessagesCount}
-          onOpenChat={handleOpenChat}
           theme={theme}
         />
       )}

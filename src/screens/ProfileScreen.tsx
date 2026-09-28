@@ -20,6 +20,8 @@ import { useProfileQuery, useAvailabilityQuery } from "../hooks/useProfileQuerie
 import { useUpdateAvailability } from "../hooks/useProfileMutations";
 import { useLogoutMutation } from "../hooks/useAuthMutations";
 import { MainStackParamList } from "../navigation/types";
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
 
 function withAlpha(hexColor: string, alphaHex: string) {
   if (!/^#([0-9A-F]{6})$/i.test(hexColor)) {
@@ -38,6 +40,10 @@ export default function ProfileScreen() {
   const { data: availabilityData, isLoading: availabilityLoading } = useAvailabilityQuery();
   const updateAvailability = useUpdateAvailability();
   const logoutMutation = useLogoutMutation();
+  const notificationCount = useQuery({
+    queryKey: ['store-notification-count'],
+    queryFn: () => apiClient.get<{ unreadCount: number }>('/apps/deliveries/users-notifications/count-unread'),
+  });
 
   if (profileLoading || !profileData) {
     return (
@@ -73,6 +79,13 @@ export default function ProfileScreen() {
   };
 
   const menuPrimary = [
+    {
+      key: 'notifications',
+      icon: 'bell',
+      title: notificationCount.data?.unreadCount ? `${t('notifications_title')} (${notificationCount.data.unreadCount})` : t('notifications_title'),
+      subtitle: t('notifications_profile_subtitle'),
+      onPress: () => navigation.navigate('Notifications'),
+    },
     {
       key: "language",
       icon: "globe",

@@ -4,6 +4,8 @@ import { authKeys } from '../api/queryKeys';
 import type { ApiError } from '../api/apiClient';
 import type { AuthSessionResponse, LoginPayload } from '../api/authTypes';
 import { useAuth } from '../auth/AuthProvider';
+import { pushTokenStorage } from '../api/pushTokenStorage';
+import apiClient from '../api/apiClient';
 
 type AppTag = 'store' | 'rider';
 
@@ -41,6 +43,7 @@ export function useLoginMutation(
     ...options,
     onSuccess: async (data, variables, onMutateResult, context) => {
       await setSessionFromResponse(data);
+      await pushTokenStorage.save(variables.device_push_token);
       queryClient.setQueryData(authKeys.session(), {
         token: data.accessToken,
         refreshToken: data.refreshToken ?? null,
@@ -57,7 +60,17 @@ export function useLogoutMutation(options?: UseMutationOptions<void, ApiError, v
   const { clearSession } = useAuth();
 
   return useMutation<void, ApiError, void>({
-    mutationFn: clearSession,
+    mutationFn: async () => {
+      const token = await pushTokenStorage.get();
+      if (token) {
+        await Promise.race([
+          apiClient.post('/users/push-token/unregister', { token }).catch(() => undefined),
+          new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+        ]);
+      }
+      await pushTokenStorage.clear();
+      await clearSession();
+    },
     ...options,
     onSuccess: async (data, variables, onMutateResult, context) => {
       queryClient.setQueryData(authKeys.session(), {

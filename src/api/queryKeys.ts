@@ -104,6 +104,8 @@ export const appSettingsKeys = {
 
 export const supportChatKeys = {
   all: ["support-chat"] as const,
+  unread: () => [...supportChatKeys.all, "unread"] as const,
+  order: (orderId: string) => [...supportChatKeys.all, "order", orderId] as const,
   messages: () => [...supportChatKeys.all, "messages"] as const,
   messagesByChatBox: (chatBoxId: string) =>
     [...supportChatKeys.messages(), chatBoxId] as const,

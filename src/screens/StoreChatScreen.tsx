@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -18,7 +19,7 @@ import { useTranslations } from "../localization/LocalizationProvider";
 import Text from "../components/Text";
 import VerticalList from "../components/VerticalList";
 import { useAuth } from "../auth/AuthProvider";
-import { useSendSupportChatMessageMutation, useSupportChatMessagesQuery } from "../hooks/useSupportChat";
+import { useMarkStoreOrderChatReadMutation, useSendSupportChatMessageMutation, useStoreOrderChatQuery, useSupportChatMessagesQuery } from "../hooks/useSupportChat";
 import { SupportChatMessage } from "../api/supportChatServiceTypes";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SocketReceivedMessage, storeOrdersSocketClient } from "../socket/storeOrdersSocket";
@@ -36,12 +37,8 @@ export default function StoreChatScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
 
   const senderId = session.user?.id ?? "";
-  const initialResolvedChatBoxId =
-    route.params.chatBoxId
-    ?? resolveSupportChatBoxId({
-      receiverId: route.params.receiverId ?? null,
-      orderId: route.params.orderId ?? null,
-    });
+  const initialResolvedChatBoxId = route.params.orderId ? null :
+    route.params.chatBoxId ?? resolveSupportChatBoxId({ receiverId: route.params.receiverId ?? null });
   const [chatBoxId, setChatBoxId] = useState(initialResolvedChatBoxId ?? null);
   const [input, setInput] = useState("");
   const [socketMessages, setSocketMessages] = useState<SupportChatMessage[]>([]);
@@ -50,21 +47,44 @@ export default function StoreChatScreen({ navigation, route }: Props) {
   const receiverId = route.params.receiverId ?? null;
   const riderName = route.params.riderName ?? t("chat_store");
   const orderId = route.params.orderId ?? "";
+  const orderChat = useStoreOrderChatQuery(orderId);
+  const markOrderRead = useMarkStoreOrderChatReadMutation();
   const runtimeParams = route.params as MainStackParamList["StoreChat"] & Record<string, unknown>;
   const orderAmount =
     typeof runtimeParams.orderAmount === "number" ? runtimeParams.orderAmount : null;
 
   const {
-    data: messages = [],
-    isLoading,
-    refetch,
-    isRefetching,
+    data: legacyMessages = [],
+    isLoading: legacyLoading,
+    refetch: refetchLegacy,
+    isRefetching: legacyRefetching,
   } = useSupportChatMessagesQuery({
     chatBoxId,
+    enabled: !orderId && Boolean(chatBoxId),
   });
+  const messages = orderId ? orderChat.data?.messages ?? [] : legacyMessages;
+  const isLoading = orderId ? orderChat.isLoading : legacyLoading;
+  const isRefetching = orderId ? orderChat.isRefetching : legacyRefetching;
+  const refetch = orderId ? orderChat.refetch : refetchLegacy;
   const sendMutation = useSendSupportChatMessageMutation();
 
   useEffect(() => {
+    if (!orderId) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void orderChat.refetch();
+    });
+    return () => subscription.remove();
+  }, [orderId, orderChat.refetch]);
+
+  useEffect(() => {
+    if (!orderId || !orderChat.data) return;
+    setChatBoxId(orderChat.data.chatBoxId);
+    void markOrderRead.mutateAsync(orderId).catch(() => undefined);
+    void queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+  }, [orderId, orderChat.data?.chatBoxId, orderChat.data?.messages.length]);
+
+  useEffect(() => {
+    if (orderId) return;
     const resolved =
       route.params.chatBoxId
       ?? resolveSupportChatBoxId({
@@ -77,6 +97,7 @@ export default function StoreChatScreen({ navigation, route }: Props) {
   }, [chatBoxId, orderId, receiverId, route.params.chatBoxId]);
 
   useEffect(() => {
+    if (orderId) return;
     if (!chatBoxId) return;
     cacheSupportChatBoxId({
       chatBoxId,
@@ -91,42 +112,41 @@ export default function StoreChatScreen({ navigation, route }: Props) {
       const normalizedReceiverId = String(receiverId ?? "").trim();
       const messageSender = String(message.sender ?? "").trim();
       const messageReceiver = String(message.receiver ?? "").trim();
-      const isBetweenStoreAndRider =
-        (messageSender === normalizedSenderId && messageReceiver === normalizedReceiverId)
-        || (messageSender === normalizedReceiverId && messageReceiver === normalizedSenderId);
+      const isBetweenStoreAndRider = orderId
+        ? message.orderId === orderId && (messageSender === normalizedSenderId || messageReceiver === normalizedSenderId)
+        : (messageSender === normalizedSenderId && messageReceiver === normalizedReceiverId)
+          || (messageSender === normalizedReceiverId && messageReceiver === normalizedSenderId);
 
-      if (!isBetweenStoreAndRider) {
-        console.log("[StoreChatScreen] receive-message ignored", {
-          messageSender,
-          messageReceiver,
-          senderId: normalizedSenderId,
-          receiverId: normalizedReceiverId,
-        });
-        return;
-      }
+      if (!isBetweenStoreAndRider) return;
 
       const nextMessage: SupportChatMessage = {
-        id: `${messageSender}-${messageReceiver}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        chatBoxId: chatBoxId ?? "",
+        id: String(message.id ?? "").trim(),
+        chatBoxId: String(message.chatBoxId ?? message.chat_box_id ?? chatBoxId ?? ""),
         senderId: messageSender,
         receiverId: messageReceiver,
         text: message.text,
-        createdAt: new Date().toISOString(),
+        createdAt: String(message.createdAt ?? new Date().toISOString()),
       };
 
-      setSocketMessages((prev) => [...prev, nextMessage]);
+      if (!nextMessage.id || (chatBoxId && nextMessage.chatBoxId !== chatBoxId)) return;
+      if (orderId && !chatBoxId) void refetch();
+
+      setSocketMessages((prev) => prev.some((item) => item.id === nextMessage.id) ? prev : [...prev, nextMessage]);
       if (chatBoxId) {
-        const queryKey = supportChatKeys.messagesByChatBox(chatBoxId);
-        queryClient.setQueryData<SupportChatMessage[]>(queryKey, (prev = []) => {
-          if (prev.some((item) => item.id === nextMessage.id)) return prev;
-          return [...prev, nextMessage];
-        });
+        if (orderId) {
+          queryClient.setQueryData<{ chatBoxId: string | null; messages: SupportChatMessage[] }>(supportChatKeys.order(orderId), (prev) => prev ? { ...prev, messages: prev.messages.some((item) => item.id === nextMessage.id) ? prev.messages : [...prev.messages, nextMessage] } : prev);
+          void markOrderRead.mutateAsync(orderId).catch(() => undefined);
+          void queryClient.invalidateQueries({ queryKey: supportChatKeys.unread() });
+        } else {
+          const queryKey = supportChatKeys.messagesByChatBox(chatBoxId);
+          queryClient.setQueryData<SupportChatMessage[]>(queryKey, (prev = []) => prev.some((item) => item.id === nextMessage.id) ? prev : [...prev, nextMessage]);
+        }
       }
       setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 50);
     });
 
     return unsubscribe;
-  }, [chatBoxId, queryClient, receiverId, senderId]);
+  }, [chatBoxId, orderId, queryClient, receiverId, senderId]);
 
   const mergedMessages = useMemo(() => {
     const byId = new Map<string, SupportChatMessage>();
@@ -166,21 +186,16 @@ export default function StoreChatScreen({ navigation, route }: Props) {
       Alert.alert(t("chat_sender_missing"));
       return;
     }
-    if (!receiverId) {
+    if (!receiverId && !orderId) {
       Alert.alert(t("chat_receiver_missing"));
       return;
     }
 
     try {
-      storeOrdersSocketClient.sendMessage({
-        sender: senderId,
-        receiver: receiverId,
-        text,
-      });
-
       const response = await sendMutation.mutateAsync({
         senderId,
-        receiverId,
+        receiverId: receiverId ?? "",
+        orderId: orderId || undefined,
         text,
       });
 
@@ -192,17 +207,15 @@ export default function StoreChatScreen({ navigation, route }: Props) {
         setChatBoxId(nextChatBoxId);
       }
 
-      cacheSupportChatBoxId({
-        chatBoxId: nextChatBoxId,
-        receiverId,
-        orderId: orderId || null,
-      });
+      if (!orderId) cacheSupportChatBoxId({ chatBoxId: nextChatBoxId, receiverId });
 
       setInput("");
       setSocketMessages([]);
       // Avoid refetching against a stale/null key. When a new chatBoxId is created,
       // setting state above triggers the correct query automatically.
-      if (chatBoxId && effectiveChatBoxId) {
+      if (orderId) {
+        await orderChat.refetch();
+      } else if (chatBoxId && effectiveChatBoxId) {
         await refetch();
       }
       setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 50);
@@ -228,11 +241,11 @@ export default function StoreChatScreen({ navigation, route }: Props) {
           style={[
             styles.bubble,
             {
-              backgroundColor: isMine ? "#F3F4F6" : "#E4FFD9",
+              backgroundColor: isMine ? theme.colors.primary : theme.colors.surface,
             },
           ]}
         >
-          <Text style={styles.bubbleText} color="#1F2937">
+          <Text style={styles.bubbleText} color={isMine ? theme.colors.buttonText : theme.colors.text}>
             {item.text}
           </Text>
         </View>
@@ -251,43 +264,47 @@ export default function StoreChatScreen({ navigation, route }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: "#F3F4F6" }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 84 : 0}
+      style={[styles.flex, { backgroundColor: theme.colors.gray50 }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
     >
-      <View style={[styles.headerWrap, { paddingTop: insets.top + 2, borderBottomColor: theme.colors.gray300 }]}> 
+      <View style={[styles.headerWrap, { paddingTop: 4, borderBottomColor: theme.colors.gray200, backgroundColor: theme.colors.surface }]}> 
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()} style={styles.headerIconBtn}>
-            <Feather name="x-circle" size={20} color={theme.colors.gray900} />
+            <Feather name="arrow-left" size={22} color={theme.colors.text} />
           </Pressable>
           <Text style={styles.headerTitle} weight="medium" color={theme.colors.gray900}>
             {riderName}
           </Text>
-          <Pressable onPress={handleCall} style={styles.headerIconBtn}>
-            <Feather name="phone" size={20} color={theme.colors.gray900} />
-          </Pressable>
+          {runtimeParams.riderPhone ? <Pressable onPress={handleCall} style={styles.headerIconBtn}>
+            <Feather name="phone" size={20} color={theme.colors.text} />
+          </Pressable> : <View style={styles.headerIconBtn} />}
         </View>
       </View>
 
-      <View style={styles.orderStripWrap}>
+      <View style={[styles.orderStripWrap, { backgroundColor: theme.colors.surface }]}>
         <View style={[styles.orderStrip, { borderTopColor: theme.colors.gray300, borderBottomColor: theme.colors.gray300 }]}> 
           <View style={styles.orderLeftRow}>
             <Text style={styles.orderLabel} weight="medium" color={theme.colors.gray900}>
               {t("chat_order_number")}
             </Text>
-            <View style={[styles.orderBadge, { backgroundColor: "#F3F4F6", borderColor: theme.colors.gray200 }]}> 
+            <View style={[styles.orderBadge, { backgroundColor: theme.colors.gray50, borderColor: theme.colors.gray200 }]}> 
               <Text style={styles.orderBadgeText} weight="medium" color={theme.colors.gray500}>
                 {formattedOrderId}
               </Text>
             </View>
           </View>
           <Text style={styles.orderAmountText} weight="medium" color={theme.colors.gray900}>
-            {orderAmount != null ? `$${orderAmount}` : ""}
+            {orderAmount != null ? `₡${orderAmount.toLocaleString()}` : ""}
           </Text>
         </View>
       </View>
 
-      {isLoading ? (
+      {orderId && orderChat.isError ? (
+        <Pressable style={styles.center} onPress={() => void orderChat.refetch()}>
+          <Text color={theme.colors.gray600}>{t("chat_load_failed")}</Text>
+        </Pressable>
+      ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
@@ -312,13 +329,12 @@ export default function StoreChatScreen({ navigation, route }: Props) {
         style={[
           styles.composerDock,
           {
-            backgroundColor: theme.colors.primary,
+            backgroundColor: theme.colors.surface,
             paddingBottom: Math.max(insets.bottom + 10, 16),
           },
         ]}
       >
         <View style={[styles.composerInner, { backgroundColor: theme.colors.white }]}> 
-          <Feather name="plus-circle" size={22} color={theme.colors.gray500} />
           <TextInput
             value={input}
             onChangeText={setInput}
@@ -326,11 +342,13 @@ export default function StoreChatScreen({ navigation, route }: Props) {
             placeholderTextColor={theme.colors.gray500}
             style={[styles.input, { color: theme.colors.gray900 }]}
             maxLength={500}
+            multiline
+            accessibilityLabel={t("chat_reply_placeholder")}
           />
           <Pressable
             onPress={handleSend}
             disabled={sendMutation.isPending || input.trim().length === 0}
-            style={styles.sendIconBtn}
+            style={[styles.sendIconBtn, { backgroundColor: theme.colors.primary }]}
           >
             {sendMutation.isPending ? (
               <ActivityIndicator size="small" color={theme.colors.gray900} />
@@ -338,7 +356,7 @@ export default function StoreChatScreen({ navigation, route }: Props) {
               <Feather
                 name="send"
                 size={20}
-                color={input.trim().length === 0 ? theme.colors.gray500 : theme.colors.gray900}
+                color={input.trim().length === 0 ? theme.colors.gray500 : theme.colors.buttonText}
               />
             )}
           </Pressable>
@@ -358,20 +376,19 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   headerWrap: {
-    backgroundColor: "#F3F4F6",
     borderBottomWidth: 1,
     paddingHorizontal: 16,
-    paddingBottom: 6,
+    paddingBottom: 10,
   },
   headerRow: {
-    height: 34,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   headerIconBtn: {
-    width: 24,
-    height: 24,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -383,7 +400,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 8,
-    backgroundColor: "#F3F4F6",
   },
   orderStrip: {
     borderTopWidth: 1,
@@ -441,8 +457,8 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   bubble: {
-    borderRadius: 4,
-    paddingHorizontal: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   bubbleText: {
@@ -467,29 +483,30 @@ const styles = StyleSheet.create({
   composerDock: {
     paddingHorizontal: 16,
     paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   composerInner: {
-    height: 56,
+    minHeight: 52,
     borderRadius: 12,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    shadowColor: "#000000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
-    paddingVertical: 0,
+    paddingVertical: 12,
+    maxHeight: 112,
   },
   sendIconBtn: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },

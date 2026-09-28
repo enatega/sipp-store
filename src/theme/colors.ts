@@ -20,6 +20,13 @@ export const buildLightColors = (brandColors: BrandColors = defaultBrandColors) 
   gray200: '#E5E7EB',
   gray50: '#f5f5f5ff',
   green50: '#ECFDF5',
+  green600: '#047857',
+  sky100: '#DBEAFE',
+  sky600: '#1D4ED8',
+  amber100: '#FEF3C7',
+  amber800: '#92400E',
+  red500: '#EF4444',
+  shadow: 'rgba(17, 24, 39, 0.12)',
 });
 
 export const buildDarkColors = (brandColors: BrandColors = defaultBrandColors): ThemeColors => ({
@@ -41,6 +48,13 @@ export const buildDarkColors = (brandColors: BrandColors = defaultBrandColors): 
   gray200: '#1F2937',
   gray50: '#090909ff',
   green50: '#ECFDF5',
+  green600: '#047857',
+  sky100: '#DBEAFE',
+  sky600: '#1D4ED8',
+  amber100: '#FEF3C7',
+  amber800: '#92400E',
+  red500: '#EF4444',
+  shadow: 'rgba(2, 6, 23, 0.45)',
 });
 
 export const lightColors = buildLightColors();

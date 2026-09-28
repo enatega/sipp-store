@@ -8,6 +8,7 @@ export type SupportChatMessage = {
 };
 
 export type SendSupportChatMessageRequest = {
+  orderId?: string;
   senderId: string;
   receiverId: string;
   text: string;
@@ -17,4 +18,5 @@ export type SendSupportChatMessageResponse = {
   message?: string;
   chatBoxId?: string;
   data?: unknown;
+  detail?: SupportChatMessage;
 };

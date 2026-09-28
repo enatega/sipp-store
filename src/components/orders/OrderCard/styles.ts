@@ -2,10 +2,15 @@ import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
   card: {
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 12,
-    gap: 8,
+    padding: 16,
+    gap: 14,
+    marginBottom: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
   },
   headerTopGrid: {
     flexDirection: "row",
@@ -318,10 +323,10 @@ export const styles = StyleSheet.create({
     color: "#111827",
   },
   commentBox: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 5,
   },
   commentLabel: {
     fontSize: 14,
@@ -341,8 +346,8 @@ export const styles = StyleSheet.create({
   },
   btn: {
     flex: 1,
-    height: 42,
-    borderRadius: 40,
+    height: 46,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -393,8 +398,8 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 10,
-    borderRadius: 6,
+    padding: 12,
+    borderRadius: 12,
     marginTop: 6,
   },
   preparingLeft: {
@@ -420,8 +425,8 @@ export const styles = StyleSheet.create({
   },
   btnPlusTime: {
     paddingHorizontal: 14,
-    height: 42,
-    borderRadius: 40,
+    height: 46,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E4E4E7",
     backgroundColor: "#FFFFFF",
@@ -435,8 +440,8 @@ export const styles = StyleSheet.create({
   },
   btnMarkReady: {
     flex: 1,
-    height: 42,
-    borderRadius: 40,
+    height: 46,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -557,8 +562,8 @@ export const styles = StyleSheet.create({
     color: "#4B5563",
   },
   btnConfirmPickup: {
-    height: 42,
-    borderRadius: 40,
+    height: 46,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,

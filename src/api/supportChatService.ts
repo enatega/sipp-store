@@ -50,6 +50,16 @@ function normalizeMessagesPayload(payload: unknown): SupportChatMessage[] {
 }
 
 export const supportChatService = {
+  getOrderUnreadCounts() {
+    return apiClient.get<{ total: number; byOrderId: Record<string, number> }>(`${BASE_PATH}/order-unread`);
+  },
+  async getOrderChat(orderId: string) {
+    const response = await apiClient.get<{ chatBoxId: string | null; messages: unknown[] }>(`${BASE_PATH}/order/${orderId}/store_rider`);
+    return { chatBoxId: response.chatBoxId, messages: normalizeMessagesPayload(response.messages) };
+  },
+  async markOrderChatRead(orderId: string) {
+    return apiClient.patch(`${BASE_PATH}/order/${orderId}/store_rider/read`);
+  },
   async getMessages(chatBoxId: string) {
     console.log("[SupportChat] getMessages:start", { chatBoxId });
     const response = await apiClient.get<unknown>(`${BASE_PATH}/messages/${chatBoxId}`);
@@ -59,9 +69,10 @@ export const supportChatService = {
   },
 
   async sendMessage(data: SendSupportChatMessageRequest) {
-    console.log("[SupportChat] sendMessage:start", data);
+    if (data.orderId) {
+      return apiClient.post<SendSupportChatMessageResponse>(`${BASE_PATH}/order/${data.orderId}/store_rider/send`, { text: data.text });
+    }
     const response = await apiClient.post<SendSupportChatMessageResponse>(`${BASE_PATH}/send`, data);
-    console.log("[SupportChat] sendMessage:success", response);
     return response;
   },
 };

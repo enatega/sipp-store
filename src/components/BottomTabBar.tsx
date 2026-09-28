@@ -8,6 +8,9 @@ import HomeIcon from './icons/HomeIcon';
 import WalletIcon from './icons/WalletIcon';
 import EarningsIcon from './icons/EarningsIcon';
 import ProfileIcon from './icons/ProfileIcon';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
+import { useStoreOrderChatUnreadQuery } from '../hooks/useSupportChat';
 
 const ROUTE_META = {
   HomeTab: { key: 'nav_home', Icon: HomeIcon },
@@ -19,6 +22,11 @@ const ROUTE_META = {
 export default function BottomTabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { t } = useTranslations('app');
   const { theme } = useAppTheme();
+  const chatUnread = useStoreOrderChatUnreadQuery();
+  const notificationUnread = useQuery({
+    queryKey: ['store-notification-count'],
+    queryFn: () => apiClient.get<{ unreadCount: number }>('/apps/deliveries/users-notifications/count-unread'),
+  });
   const bottomInset = Math.max(insets.bottom + 6, 16);
   const containerHeight = 62 + bottomInset;
 
@@ -39,6 +47,8 @@ export default function BottomTabBar({ state, navigation, insets }: BottomTabBar
         const meta = ROUTE_META[route.name as keyof typeof ROUTE_META];
         const Icon = meta?.Icon ?? HomeIcon;
         const label = t(meta?.key ?? 'nav_home');
+        const badgeCount = route.name === 'HomeTab' ? chatUnread.data?.total ?? 0
+          : route.name === 'ProfileTab' ? notificationUnread.data?.unreadCount ?? 0 : 0;
 
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -54,10 +64,11 @@ export default function BottomTabBar({ state, navigation, insets }: BottomTabBar
             onPress={onPress}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            accessibilityLabel={label}
+            accessibilityLabel={badgeCount ? `${label}, ${badgeCount} unread` : label}
           >
             <View style={styles.iconWrapper}>
               <Icon active={isActive} />
+              {badgeCount > 0 ? <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}><Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text></View> : null}
             </View>
             <Text
               variant="caption"
@@ -97,6 +108,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badge: { position: 'absolute', right: -17, top: -9, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   label: {
     fontSize: 12,
     lineHeight: 16,

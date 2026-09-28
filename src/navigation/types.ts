@@ -8,6 +8,8 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Home: NavigatorScreenParams<MainTabParamList> | undefined;
   Language: undefined;
+  Notifications: undefined;
+  StoreOrderDetail: { orderId: string };
   ProfileDetails: undefined;
   ProfileFieldEdit: {
     field: 'address' | 'phone';

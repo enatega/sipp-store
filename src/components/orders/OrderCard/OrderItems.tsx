@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useTranslations } from "../../../localization/LocalizationProvider";
+import type { Theme } from "../../../theme/theme";
 import Text from "../../Text";
 import { OrderItem, OrderSummary } from "../../../api/orderServicesTypes";
 import { styles } from "./styles";
@@ -11,7 +12,7 @@ type Props = {
   items: OrderItem[];
   totalAmount: number;
   orderSummary?: OrderSummary | null;
-  theme: any;
+  theme: Theme;
 };
 
 type ParsedOption = {
@@ -139,7 +140,7 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
   const { t } = useTranslations("app");
   const { formatAmount } = useCurrencyFormatter();
   const [expandedAddons, setExpandedAddons] = useState<Record<string, boolean>>({});
-  const [isBillExpanded, setIsBillExpanded] = useState(true);
+  const [isBillExpanded, setIsBillExpanded] = useState(false);
 
   if (!items || items.length === 0) return null;
 
@@ -162,8 +163,8 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
   return (
     <>
       <View style={styles.itemsHeader}>
-        <Text style={styles.colHeader}>{t("order_card_col_order")}</Text>
-        <Text style={styles.colHeaderRight}>{t("order_card_col_price")}</Text>
+        <Text style={[styles.colHeader, { color: theme.colors.gray600 }]}>{t("order_card_col_order")}</Text>
+        <Text style={[styles.colHeaderRight, { color: theme.colors.gray600 }]}>{t("order_card_col_price")}</Text>
       </View>
       {items.map((item, idx) => {
         const parsedOptions = parseSelectedOptions(item.selectedOptions);
@@ -205,7 +206,7 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
               )}
             </View>
             <View style={styles.itemInfo}>
-              <Text style={styles.itemName} weight="semiBold">
+              <Text style={[styles.itemName, { color: theme.colors.gray900 }]} weight="semiBold">
                 {item.name}
               </Text>
               {parsedOptions.length > 0 ? (
@@ -246,12 +247,12 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
                   ) : null}
                 </>
               ) : null}
-              <Text style={[styles.itemQty, { backgroundColor: theme.colors.gray100 }]}>
+              <Text style={[styles.itemQty, { backgroundColor: theme.colors.gray50, color: theme.colors.gray900 }]}>
                 x{item.quantity}
               </Text>
             </View>
             <View style={styles.itemPriceColumn}>
-              <Text style={styles.itemPrice} weight="semiBold">
+              <Text style={[styles.itemPrice, { color: theme.colors.gray900 }]} weight="semiBold">
                 {formatAmount(item.totalPrice, 2)}
               </Text>
               {parsedOptions.length > 0 && isExpanded ? (
@@ -293,10 +294,7 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
               color={theme.colors.gray600}
             />
           </Pressable>
-          {!isBillExpanded ? (
-            <View style={[styles.divider, { backgroundColor: theme.colors.gray200 }]} />
-          ) : null}
-          {subtotalValue !== null ? (
+          {isBillExpanded && subtotalValue !== null ? (
             <View style={styles.billRow}>
               <Text style={styles.billRowLabel} color={theme.colors.gray600}>
                 {t("order_card_bill_subtotal")}
@@ -329,10 +327,10 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
         </View>
       ) : null}
       <View style={styles.totalRow}>
-        <Text style={styles.totalLabel} weight="semiBold">
+        <Text style={[styles.totalLabel, { color: theme.colors.gray900 }]} weight="semiBold">
           {t("order_card_total")}
         </Text>
-        <Text style={styles.totalValue} weight="semiBold">
+        <Text style={[styles.totalValue, { color: theme.colors.gray900 }]} weight="semiBold">
           {formatAmount(resolvedTotal, 2)}
         </Text>
       </View>

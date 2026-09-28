@@ -6,9 +6,14 @@ export type SocketSubscriptionCleanup = () => void;
 export type SocketEventHandler<TArgs extends unknown[] = unknown[]> = (...args: TArgs) => void;
 
 export type SocketReceivedMessage = {
+  id?: string;
+  orderId?: string;
   sender: string;
   receiver: string;
   text: string;
+  chatBoxId?: string;
+  chat_box_id?: string;
+  createdAt?: string;
 };
 export type SocketSentMessage = {
   sender: string;
@@ -265,11 +270,18 @@ class StoreOrdersSocketClient {
     return this.subscribe<[StoreRiderStatusUpdatedPayload]>("rider-status-updated", handler);
   }
 
+  subscribeNotificationCreated(handler: () => void) {
+    return this.subscribe<[unknown]>("notification-created", handler);
+  }
+
+  subscribeOrderChatRead(handler: () => void) {
+    return this.subscribe<[unknown]>("order-chat-read", handler);
+  }
+
   onReceiveMessage(
     handler: (message: SocketReceivedMessage) => void,
   ): SocketSubscriptionCleanup {
     return this.subscribe<[SocketReceivedMessage]>("receive-message", (message) => {
-      console.log("Received socket message:", message);
       handler(message);
     });
   }

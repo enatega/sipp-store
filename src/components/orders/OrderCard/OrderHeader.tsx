@@ -1,108 +1,49 @@
-import React from "react";
-import { View } from "react-native";
-import { useTranslations } from "../../../localization/LocalizationProvider";
-import Text from "../../Text";
-import { OrderStatus } from "../../../api/orderServicesTypes";
-import { styles } from "./styles";
-import { Feather } from "@expo/vector-icons";
-import { useAppTheme } from "../../../theme/ThemeProvider";
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useTranslations } from '../../../localization/LocalizationProvider';
+import { useAppTheme } from '../../../theme/ThemeProvider';
+import Text from '../../Text';
+import { OrderStatus } from '../../../api/orderServicesTypes';
 
 type Props = {
-    orderCode: string;
-    status: OrderStatus;
-    createdAt: string;
-    deliveredBadgeLabel?: string;
-    headerStatusLabel?: string | null;
-    headerStatusTone?: "blue" | "green" | "amber";
+  orderCode: string;
+  orderType: 'delivery' | 'pickup';
+  status: OrderStatus;
+  createdAt: string;
+  headerStatusLabel?: string | null;
+  headerStatusTone?: 'blue' | 'green' | 'amber';
 };
 
-export default function OrderHeader({
-    orderCode,
-    status,
-    createdAt,
-    deliveredBadgeLabel,
-    headerStatusLabel,
-    headerStatusTone = "blue",
-}: Props) {
-    const { t } = useTranslations("app");
-    const { theme } = useAppTheme();
-    const createdDate = new Date(createdAt);
-    const formattedDate = createdDate.toLocaleDateString(undefined, {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
-    const formattedTime = createdDate.toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+export default function OrderHeader({ orderCode, orderType, status, createdAt, headerStatusLabel, headerStatusTone = 'blue' }: Props) {
+  const { t } = useTranslations('app');
+  const { theme } = useAppTheme();
+  const date = new Date(createdAt);
+  const placedAt = Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const tone = headerStatusTone === 'green'
+    ? { background: theme.colors.green50, text: theme.colors.green600 }
+    : headerStatusTone === 'amber'
+      ? { background: theme.colors.amber100, text: theme.colors.amber800 }
+      : { background: theme.colors.sky100, text: theme.colors.sky600 };
+  const label = headerStatusLabel || status.replace(/_/g, ' ');
 
-    return (
-        <>
-            {headerStatusLabel ? (
-                <>
-                    <View style={styles.headerStatusRow}>
-                        <Text style={styles.headerStatusLabel}>{t("order_card_order_status")}</Text>
-                        <View
-                            style={[
-                                styles.headerStatusBadge,
-                                headerStatusTone === "green" && styles.headerStatusBadgeGreen,
-                                headerStatusTone === "amber" && styles.headerStatusBadgeAmber,
-                            ]}
-                        >
-                            <Feather
-                                name="navigation"
-                                size={13}
-                                color={
-                                    headerStatusTone === "green"
-                                        ? "#047857"
-                                        : headerStatusTone === "amber"
-                                            ? "#B45309"
-                                            : "#1D4ED8"
-                                }
-                            />
-                            <Text
-                                style={[
-                                    styles.headerStatusText,
-                                    headerStatusTone === "green" && styles.headerStatusTextGreen,
-                                    headerStatusTone === "amber" && styles.headerStatusTextAmber,
-                                ]}
-                            >
-                                {headerStatusLabel}
-                            </Text>
-                        </View>
-                    </View>
-                    <View style={[styles.divider, { backgroundColor: "#E5E7EB" }]} />
-                </>
-            ) : null}
-            <View style={styles.headerTopGrid}>
-                <View style={styles.headerInfoItem}>
-                    <View style={[styles.headerIconWrap, { backgroundColor: theme.colors.tertiary }]}>
-                        <Feather name="list" size={16} color={theme.colors.primary} />
-                    </View>
-                    <View style={styles.headerInfoTextWrap}>
-                        <Text style={styles.headerLabel}>{t("order_card_id_label")}</Text>
-                        <Text style={styles.headerValue} weight="medium">
-                            {orderCode}
-                        </Text>
-                    </View>
-                </View>
-                <View style={styles.headerInfoItem}>
-                    <View style={[styles.headerIconWrap, { backgroundColor: theme.colors.tertiary }]}>
-                        <Feather name="calendar" size={16} color={theme.colors.primary} />
-                    </View>
-                    <View style={styles.headerInfoTextWrap}>
-                        <Text style={styles.headerLabel}>{t("order_card_placed_on")}</Text>
-                        <Text style={styles.headerValue} weight="medium">
-                            {formattedDate}
-                        </Text>
-                        <Text style={styles.headerValue} weight="medium">
-                            {formattedTime}
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-        </>
-    );
+  return (
+    <View style={styles.header}>
+      <View style={styles.orderIdentity}>
+        <Text variant="subtitle" weight="bold" color={theme.colors.gray900}>#{orderCode.replace(/^#/, '')}</Text>
+        <Text variant="caption" color={theme.colors.gray600}>{t('order_card_placed_on')} {placedAt}</Text>
+        <Text variant="caption" weight="semiBold" color={theme.colors.gray600}>{t(orderType === 'delivery' ? 'order_card_type_delivery' : 'order_card_type_pickup')}</Text>
+      </View>
+      <View style={[styles.status, { backgroundColor: tone.background }]}>
+        <Text variant="caption" weight="semiBold" color={tone.text} numberOfLines={2}>{label}</Text>
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+  orderIdentity: { flex: 1, gap: 3 },
+  status: { maxWidth: '48%', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+});

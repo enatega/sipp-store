@@ -203,6 +203,8 @@ const fr = {
   earnings_admin_commission: "Commission administrateur",
   earnings_rider_earnings: "Gains du livreur",
   earnings_store_net: "Gains nets du magasin",
+  earnings_sipp_coupon: "Coupon payé par Sipp",
+  earnings_commission_vat: "TVA sur la commission",
 
   Loading: "Chargement...",
   updating: "Mise à jour...",

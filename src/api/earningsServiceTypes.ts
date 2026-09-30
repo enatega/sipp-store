@@ -66,6 +66,17 @@ export interface EarningsHistoryItem {
   status: string;
   created_at: string;
   label: string;
+  coupon_code?: string | null;
+  /** Who bore the coupon: ADMIN (Sipp) or STORE; null when none was applied. */
+  coupon_funded_by?: 'ADMIN' | 'STORE' | null;
+  coupon_discount?: number;
+  /** Commission before any Sipp coupon offset. */
+  gross_commission?: number;
+  commission_vat?: number;
+  commission_rate?: number | null;
+  commission_vat_rate?: number | null;
+  /** Part of a Sipp coupon beyond the commission, paid to the store. */
+  admin_coupon_extra_paid?: number;
 }
 
 export interface EarningsHistoryResponse {

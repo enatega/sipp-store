@@ -205,6 +205,8 @@ const en = {
   earnings_admin_commission: "Admin commission",
   earnings_rider_earnings: "Rider earnings",
   earnings_store_net: "Store net earnings",
+  earnings_sipp_coupon: "Coupon paid by Sipp",
+  earnings_commission_vat: "VAT on commission",
 
   Loading: 'Loading...',
   updating: 'Updating...',

@@ -11,6 +11,23 @@ type Props = {
 };
 
 /**
+ * Splits the store deduction into commission, commission VAT and any
+ * Sipp-paid coupon so the rows add up from customer payment to net earnings.
+ * Returns null (simple view) for orders without that breakdown.
+ */
+function buildBreakdown(item: EarningsHistoryItem) {
+  if (item.gross_commission == null) return null;
+  const sippCoupon =
+    item.coupon_funded_by === 'ADMIN' ? Number(item.coupon_discount ?? 0) : 0;
+  const commission = Number(item.gross_commission);
+  const vat = Number(item.commission_vat ?? 0);
+  const net =
+    Number(item.payment_amount) + sippCoupon - commission - vat - Number(item.rider_earnings);
+  if (Math.abs(net - Number(item.net_earnings)) >= 0.01) return null;
+  return { sippCoupon, commission, vat };
+}
+
+/**
  * Expandable order card used on the Earnings order detail screen.
  * Shows Order ID + status badge, Payment row, and collapsible Order Details.
  */
@@ -19,6 +36,7 @@ export default function EarningsOrderCard({ item }: Props) {
   const { formatAmount } = useCurrencyFormatter();
   const { t } = useTranslations('app');
   const [expanded, setExpanded] = useState(false);
+  const breakdown = buildBreakdown(item);
 
   return (
     <View style={[styles.card, { borderColor: theme.colors.gray200, backgroundColor: theme.colors.surface }]}>
@@ -72,17 +90,49 @@ export default function EarningsOrderCard({ item }: Props) {
         />
       </Pressable>
 
-      {/* Expanded details placeholder */}
       {expanded && (
         <View style={[styles.expandedContent, { borderTopColor: theme.colors.gray200 }]}>
-          <View style={styles.detailRow}>
-            <Text variant="caption" color={theme.colors.mutedText}>
-              {t('earnings_admin_commission')}
-            </Text>
-            <Text variant="caption" color={theme.colors.text}>
-              -{formatAmount(item.commission_amount, 2)}
-            </Text>
-          </View>
+          {breakdown ? (
+            <>
+              {breakdown.sippCoupon > 0 && (
+                <View style={styles.detailRow}>
+                  <Text variant="caption" color={theme.colors.mutedText}>
+                    {t('earnings_sipp_coupon')}
+                  </Text>
+                  <Text variant="caption" color={theme.colors.text}>
+                    +{formatAmount(breakdown.sippCoupon, 2)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.detailRow}>
+                <Text variant="caption" color={theme.colors.mutedText}>
+                  {t('earnings_admin_commission')}
+                </Text>
+                <Text variant="caption" color={theme.colors.text}>
+                  -{formatAmount(breakdown.commission, 2)}
+                </Text>
+              </View>
+              {breakdown.vat > 0 && (
+                <View style={styles.detailRow}>
+                  <Text variant="caption" color={theme.colors.mutedText}>
+                    {t('earnings_commission_vat')}
+                  </Text>
+                  <Text variant="caption" color={theme.colors.text}>
+                    -{formatAmount(breakdown.vat, 2)}
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.detailRow}>
+              <Text variant="caption" color={theme.colors.mutedText}>
+                {t('earnings_admin_commission')}
+              </Text>
+              <Text variant="caption" color={theme.colors.text}>
+                -{formatAmount(item.commission_amount, 2)}
+              </Text>
+            </View>
+          )}
           <View style={styles.detailRow}>
             <Text variant="caption" color={theme.colors.mutedText}>
               {t('earnings_rider_earnings')}

@@ -4,4 +4,4 @@ export { default as ReadyScreen } from './ReadyScreen';
 export { default as PickupScreen } from './PickupScreen';
 export { default as CompletedScreen } from './CompletedScreen';
 
-export type OrderTab = 'new' | 'inProgress' | 'ready' | 'pickup' | 'completed';
+export type { OrderTab } from './orderFlowTypes';

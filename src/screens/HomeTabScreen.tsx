@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import { TabItem } from '../components/TabBar';
 import TabBar from '../components/TabBar';
 import TabShell from '../components/TabShell';
+import OrderActionNotice from '../components/orders/OrderActionNotice';
 import { useTranslations } from '../localization/LocalizationProvider';
 import { orderServices } from '../api/orderServices';
 import {
@@ -20,8 +21,9 @@ import {
   PickupScreen,
   CompletedScreen,
 } from './orders';
+import type { OrderFlowResult, OrderScreenProps, OrderTypeFilter } from './orders/orderFlowTypes';
 
-const ORDER_TAB_SCREENS: Record<OrderTab, React.ComponentType> = {
+const ORDER_TAB_SCREENS: Record<OrderTab, React.ComponentType<OrderScreenProps>> = {
   new: NewOrdersScreen,
   inProgress: InProgressScreen,
   ready: ReadyScreen,
@@ -29,11 +31,29 @@ const ORDER_TAB_SCREENS: Record<OrderTab, React.ComponentType> = {
   completed: CompletedScreen,
 };
 
+const NOTICE_COPY: Record<OrderFlowResult['notice'], { title: string; message: string; tone: 'success' | 'warning' | 'error' }> = {
+  accepted: { title: 'order_flow_accepted_title', message: 'order_flow_accepted_message', tone: 'success' },
+  acceptedNeedsTime: { title: 'order_flow_accepted_title', message: 'order_flow_needs_time_message', tone: 'warning' },
+  ready: { title: 'order_flow_ready_title', message: 'order_flow_ready_message', tone: 'success' },
+  collected: { title: 'order_flow_collected_title', message: 'order_flow_collected_message', tone: 'success' },
+  completed: { title: 'order_flow_completed_title', message: 'order_flow_completed_message', tone: 'success' },
+  rejected: { title: 'order_flow_rejected_title', message: 'order_flow_rejected_message', tone: 'warning' },
+  timeUpdated: { title: 'order_flow_time_title', message: 'order_flow_time_message', tone: 'success' },
+  failed: { title: 'order_flow_failed_title', message: 'order_flow_failed_message', tone: 'error' },
+};
+
 export default function HomeTabScreen() {
   const [activeOrderTab, setActiveOrderTab] = useState<OrderTab>('new');
+  const [orderType, setOrderType] = useState<OrderTypeFilter>('delivery');
+  const [notice, setNotice] = useState<OrderFlowResult | null>(null);
   const { t } = useTranslations("app");
-  const countParams = { offset: 0, limit: 1, orderType: "delivery" } as const;
+  const countParams = { offset: 0, limit: 1, orderType } as const;
   const ActiveOrderScreen = ORDER_TAB_SCREENS[activeOrderTab];
+  const handleOrderFlow = (result: OrderFlowResult) => {
+    setOrderType(result.orderType);
+    setActiveOrderTab(result.tab);
+    setNotice(result);
+  };
 
   const countQueries = useQueries({
     queries: [
@@ -71,7 +91,16 @@ export default function HomeTabScreen() {
   return (
     <TabShell titleKey="orders_title">
       <TabBar tabs={ORDER_TABS} activeTab={activeOrderTab} onTabPress={setActiveOrderTab} />
-      <ActiveOrderScreen key={activeOrderTab} />
+      <ActiveOrderScreen key={`${activeOrderTab}:${orderType}`} initialOrderType={orderType} onOrderTypeChange={setOrderType} onOrderFlow={handleOrderFlow} />
+      <OrderActionNotice
+        visible={Boolean(notice)}
+        title={notice ? t(NOTICE_COPY[notice.notice].title) : ''}
+        message={notice ? t(NOTICE_COPY[notice.notice].message) : ''}
+        tone={notice ? NOTICE_COPY[notice.notice].tone : 'success'}
+        orderCode={notice?.orderCode}
+        buttonLabel={t(notice?.notice === 'failed' ? 'order_flow_try_again' : 'order_flow_continue')}
+        onClose={() => setNotice(null)}
+      />
     </TabShell>
   );
 }

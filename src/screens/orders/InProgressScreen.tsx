@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Alert } from "react-native";
 import GenericOrderList from "../../components/orders/GenericOrderList";
 import { useInProgressOrders } from "../../hooks/useOrderQueries";
 import {
@@ -10,46 +9,32 @@ import {
 import { OrderStatus } from "../../api/orderServicesTypes";
 import { Order } from "../../api/orderServicesTypes";
 import RejectOrderModal from "../../components/RejectOrderModal";
+import type { OrderScreenProps } from './orderFlowTypes';
 
-export default function InProgressScreen() {
+export default function InProgressScreen({ initialOrderType, onOrderTypeChange, onOrderFlow }: OrderScreenProps) {
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   const [rejectingOrderCode, setRejectingOrderCode] = useState<string | null>(null);
+  const [rejectingOrderType, setRejectingOrderType] = useState<Order['orderType']>('delivery');
   const updateStatus = useUpdateOrderStatus();
   const rejectMutation = useRejectOrder();
-  const updateTime = useUpdatePreparingTime({
-    onMutate: (variables) => {
-      console.log("[InProgressScreen] updatePreparingTime onMutate", variables);
-    },
-    onSuccess: (data, variables) => {
-      console.log("[InProgressScreen] updatePreparingTime onSuccess", {
-        variables,
-        response: data,
-      });
-    },
-    onError: (error) => {
-      console.log("[InProgressScreen] updatePreparingTime onError", {
-        message: error.message,
-        status: error.status,
-        code: error.code,
-        data: error.data,
-      });
-      Alert.alert("Unable to update preparing time", error.message);
-    },
-  });
+  const updateTime = useUpdatePreparingTime();
 
-  const handleMarkReady = (orderId: string) => {
-    updateStatus.mutate({ orderId, data: { status: OrderStatus.READY } });
-  };
-
-  const handleUpdatePreparingTime = (orderId: string, minutes: number) => {
-    console.log("[InProgressScreen] handleUpdatePreparingTime", {
-      orderId,
-      minutes,
+  const handleMarkReady = (orderId: string, orderType: Order['orderType'], orderCode: string) => {
+    updateStatus.mutate({ orderId, data: { status: OrderStatus.READY } }, {
+      onSuccess: () => onOrderFlow({ tab: 'ready', orderType, orderCode, notice: 'ready' }),
+      onError: () => onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'failed' }),
     });
-    updateTime.mutate({ orderId, data: { preparingTimeInMinutes: minutes } });
   };
-  const handleReject = (orderId: string, orderCode?: string) => {
+
+  const handleUpdatePreparingTime = (orderId: string, minutes: number, orderType: Order['orderType'], orderCode: string) => {
+    updateTime.mutate({ orderId, data: { preparingTimeInMinutes: minutes } }, {
+      onSuccess: () => onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'timeUpdated' }),
+      onError: () => onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'failed' }),
+    });
+  };
+  const handleReject = (orderId: string, orderType: Order['orderType'], orderCode?: string) => {
     setRejectingOrderId(orderId);
+    setRejectingOrderType(orderType);
     setRejectingOrderCode(orderCode ?? null);
   };
 
@@ -58,9 +43,16 @@ export default function InProgressScreen() {
     rejectMutation.mutate(
       { orderId: rejectingOrderId, data: { reason } },
       {
-        onSettled: () => {
+        onSuccess: () => {
+          const orderCode = rejectingOrderCode ?? undefined;
           setRejectingOrderId(null);
           setRejectingOrderCode(null);
+          onOrderFlow({ tab: 'completed', orderType: rejectingOrderType, orderCode, notice: 'rejected' });
+        },
+        onError: () => {
+          setRejectingOrderId(null);
+          setRejectingOrderCode(null);
+          onOrderFlow({ tab: 'inProgress', orderType: rejectingOrderType, notice: 'failed' });
         },
       },
     );
@@ -73,9 +65,9 @@ export default function InProgressScreen() {
   };
 
   const renderActions = (order: Order) => ({
-    onReject: () => handleReject(order.orderId, order.orderCode),
-    onMarkReady: handleMarkReady,
-    onUpdatePreparingTime: handleUpdatePreparingTime,
+    onReject: () => handleReject(order.orderId, order.orderType, order.orderCode),
+    onMarkReady: (orderId: string) => handleMarkReady(orderId, order.orderType, order.orderCode),
+    onUpdatePreparingTime: (orderId: string, minutes: number) => handleUpdatePreparingTime(orderId, minutes, order.orderType, order.orderCode),
     isRejecting: rejectMutation.isPending,
     isMarkingReady: updateStatus.isPending,
     isUpdatingTime: updateTime.isPending,
@@ -86,6 +78,8 @@ export default function InProgressScreen() {
       <GenericOrderList
         useOrdersHook={useInProgressOrders}
         renderActions={renderActions}
+        initialOrderType={initialOrderType}
+        onOrderTypeChange={onOrderTypeChange}
       />
       <RejectOrderModal
         visible={Boolean(rejectingOrderId)}

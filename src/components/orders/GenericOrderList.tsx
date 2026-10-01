@@ -44,6 +44,8 @@ type RenderActionsReturn = {
 type Props = {
   useOrdersHook: UseOrdersHook;
   renderActions: (order: Order) => RenderActionsReturn;
+  initialOrderType?: OrderTypeFilter;
+  onOrderTypeChange?: (orderType: OrderTypeFilter) => void;
   onOrdersDataChange?: (orders: Order[]) => void;
   autoScrollToTopOnNewItem?: boolean;
 };
@@ -51,10 +53,12 @@ type Props = {
 export default function GenericOrderList({
   useOrdersHook,
   renderActions,
+  initialOrderType = 'delivery',
+  onOrderTypeChange,
   onOrdersDataChange,
   autoScrollToTopOnNewItem = false,
 }: Props) {
-  const [filterType, setFilterType] = useState<OrderTypeFilter>("delivery");
+  const [filterType, setFilterType] = useState<OrderTypeFilter>(initialOrderType);
   const listRef = useRef<any>(null);
   const previousTopOrderIdRef = useRef<string | null>(null);
   const hasMountedRef = useRef(false);
@@ -138,7 +142,11 @@ export default function GenericOrderList({
       <SegmentedTabs
         tabs={tabs}
         activeKey={filterType}
-        onTabPress={(key) => setFilterType(key as OrderTypeFilter)}
+        onTabPress={(key) => {
+          const next = key as OrderTypeFilter;
+          setFilterType(next);
+          onOrderTypeChange?.(next);
+        }}
         disabled={isLoadingAny}
       />
       {isLoading && !data ? (

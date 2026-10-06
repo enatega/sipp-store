@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "../localization/LocalizationProvider";
 import { useBankManagementQuery } from "../hooks/useProfileQueries";
 import { useUpdateBankManagement } from "../hooks/useProfileMutations";
-import { useCurrencyQuery } from "./useCurrency";
+import { useCurrencyFormatter, useCurrencyQuery } from "./useCurrency";
 
 interface UseBankManagementProps {
   onSuccess: () => void;
@@ -14,10 +14,11 @@ export function useBankManagementScreen({ onSuccess }: UseBankManagementProps) {
   // Fetch existing bank details from API
   const { data: bankData, isLoading: isLoadingBank } = useBankManagementQuery();
   const { data: currencyConfig } = useCurrencyQuery();
+  const { symbol: currencySymbol } = useCurrencyFormatter();
   const updateBankManagement = useUpdateBankManagement();
 
   // Form state
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("");
   const [accountHolder, setAccountHolder] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -51,10 +52,10 @@ export function useBankManagementScreen({ onSuccess }: UseBankManagementProps) {
     ? [
         {
           value: currencyConfig.code,
-          label: `${currencyConfig.code} (${currencyConfig.symbol})`,
+          label: currencySymbol,
         },
       ]
-    : [{ value: currency, label: currency }];
+    : [{ value: currency, label: currencySymbol }];
 
   const validate = (): boolean => {
     const next = {

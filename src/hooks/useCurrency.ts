@@ -13,8 +13,21 @@ export function useCurrencyQuery() {
 export function useCurrencyFormatter() {
   const { data } = useCurrencyQuery();
 
-  const symbol = data?.symbol ?? "$";
-  const code = data?.code ?? "USD";
+  const code = data?.code?.trim() || "CRC";
+  const configured = data?.symbol?.trim();
+  let symbol = configured && configured.toUpperCase() !== code.toUpperCase()
+    ? configured === "¡" ? "₡" : configured
+    : "₡";
+  if ((!configured || configured.toUpperCase() === code.toUpperCase()) && code.toUpperCase() !== "CRC") {
+    try {
+      const resolved = new Intl.NumberFormat("en", {
+        style: "currency", currency: code, currencyDisplay: "narrowSymbol",
+      }).formatToParts(0).find((part) => part.type === "currency")?.value;
+      symbol = resolved && resolved.toUpperCase() !== code.toUpperCase() ? resolved : "¤";
+    } catch {
+      symbol = "¤";
+    }
+  }
 
   const formatAmount = (value: number, fractionDigits = 2) => {
     const numericValue = Number(value ?? 0);

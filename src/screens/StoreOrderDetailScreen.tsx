@@ -9,6 +9,7 @@ import Text from '../components/Text';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { useTranslations } from '../localization/LocalizationProvider';
 import type { MainStackParamList } from '../navigation/types';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'StoreOrderDetail'>;
 type Detail = {
@@ -33,6 +34,7 @@ const statusKeys: Record<string, string> = {
 export default function StoreOrderDetailScreen({ route, navigation }: Props) {
   const { theme } = useAppTheme();
   const { t } = useTranslations('app');
+  const { formatAmount } = useCurrencyFormatter();
   const { session } = useAuth();
   const storeId = session.profiles?.find((entry) => entry.key === 'Store')?.data?.id;
   const { orderId } = route.params;
@@ -69,14 +71,14 @@ export default function StoreOrderDetailScreen({ route, navigation }: Props) {
           <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gray300 }]}>
             <Text style={{ color: theme.colors.gray600 }}>{t('notification_order_number')} {orderId.slice(0, 8).toUpperCase()}</Text>
             <Text weight="semiBold" style={[styles.status, { color: theme.colors.gray900 }]}>{summary?.status ? t(statusKeys[summary.status] ?? 'notification_status_pending') : '—'}</Text>
-            <Text weight="semiBold" style={[styles.amount, { color: theme.colors.primary }]}>₡ {Number(summary?.orderAmount ?? 0).toLocaleString()}</Text>
+            <Text weight="semiBold" style={[styles.amount, { color: theme.colors.primary }]}>{formatAmount(Number(summary?.orderAmount ?? 0))}</Text>
           </View>
           <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gray300 }]}>
             <Text weight="semiBold" style={[styles.section, { color: theme.colors.gray900 }]}>{t('notification_order_items')}</Text>
             {detail.data.items?.products?.map((item, index) => (
               <View key={`${item.itemName}-${index}`} style={styles.line}>
                 <Text style={[styles.flex, { color: theme.colors.gray900 }]}>{item.quantity} × {item.itemName}</Text>
-                <Text style={{ color: theme.colors.gray900 }}>₡ {Number(item.finalPrice ?? 0).toLocaleString()}</Text>
+                <Text style={{ color: theme.colors.gray900 }}>{formatAmount(Number(item.finalPrice ?? 0))}</Text>
               </View>
             ))}
           </View>

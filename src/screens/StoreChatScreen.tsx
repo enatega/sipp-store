@@ -26,12 +26,14 @@ import { SocketReceivedMessage, storeOrdersSocketClient } from "../socket/storeO
 import { cacheSupportChatBoxId, resolveSupportChatBoxId } from "../api/supportChatSession";
 import { useQueryClient } from "@tanstack/react-query";
 import { supportChatKeys } from "../api/queryKeys";
+import { useCurrencyFormatter } from "../hooks/useCurrency";
 
 type Props = NativeStackScreenProps<MainStackParamList, "StoreChat">;
 
 export default function StoreChatScreen({ navigation, route }: Props) {
   const { theme } = useAppTheme();
   const { t } = useTranslations("app");
+  const { formatAmount } = useCurrencyFormatter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -295,7 +297,7 @@ export default function StoreChatScreen({ navigation, route }: Props) {
             </View>
           </View>
           <Text style={styles.orderAmountText} weight="medium" color={theme.colors.gray900}>
-            {orderAmount != null ? `₡${orderAmount.toLocaleString()}` : ""}
+            {orderAmount != null ? formatAmount(orderAmount) : ""}
           </Text>
         </View>
       </View>

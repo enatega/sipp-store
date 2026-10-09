@@ -11,6 +11,7 @@ export type SocketReceivedMessage = {
   sender: string;
   receiver: string;
   text: string;
+  attachmentUrls?: string[];
   chatBoxId?: string;
   chat_box_id?: string;
   createdAt?: string;

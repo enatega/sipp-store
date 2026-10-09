@@ -124,6 +124,7 @@ export default function WalletScreen() {
           currentBalance={currentBalance}
           availableAmount={availableAmount}
           onWithdraw={() => setWithdrawOpen(true)}
+          withdrawActionHidden={withdrawOpen}
         />
 
         {pendingRequest && (

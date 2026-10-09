@@ -10,12 +10,14 @@ type Props = {
   currentBalance: number;
   availableAmount: number;
   onWithdraw: () => void;
+  withdrawActionHidden?: boolean;
 };
 
 export default function WalletBalanceCard({
   currentBalance,
   availableAmount,
   onWithdraw,
+  withdrawActionHidden = false,
 }: Props) {
   const { theme } = useAppTheme();
   const { t } = useTranslations("app");
@@ -45,7 +47,7 @@ export default function WalletBalanceCard({
           {formatAmount(availableAmount, 2)}
         </Text>
       </View>
-      <Button label={t("wallet_withdraw_now")} onPress={onWithdraw} />
+      {!withdrawActionHidden ? <Button label={t("wallet_withdraw_now")} onPress={onWithdraw} /> : null}
     </View>
   );
 }

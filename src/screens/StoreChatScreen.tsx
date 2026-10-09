@@ -4,6 +4,7 @@ import {
   Alert,
   AppState,
   KeyboardAvoidingView,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -19,7 +20,7 @@ import { useTranslations } from "../localization/LocalizationProvider";
 import Text from "../components/Text";
 import VerticalList from "../components/VerticalList";
 import { useAuth } from "../auth/AuthProvider";
-import { useMarkStoreOrderChatReadMutation, useSendSupportChatMessageMutation, useStoreOrderChatQuery, useSupportChatMessagesQuery } from "../hooks/useSupportChat";
+import { useMarkStoreOrderChatReadMutation, useSendSupportChatMessageMutation, useStoreOrderChatQuery, useSupportChatMessagesQuery, useUploadOrderChatPhotoMutation } from "../hooks/useSupportChat";
 import { SupportChatMessage } from "../api/supportChatServiceTypes";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SocketReceivedMessage, storeOrdersSocketClient } from "../socket/storeOrdersSocket";
@@ -27,6 +28,7 @@ import { cacheSupportChatBoxId, resolveSupportChatBoxId } from "../api/supportCh
 import { useQueryClient } from "@tanstack/react-query";
 import { supportChatKeys } from "../api/queryKeys";
 import { useCurrencyFormatter } from "../hooks/useCurrency";
+import { useOrderChatPhotoPicker } from '../hooks/useOrderChatPhotoPicker';
 
 type Props = NativeStackScreenProps<MainStackParamList, "StoreChat">;
 
@@ -69,6 +71,9 @@ export default function StoreChatScreen({ navigation, route }: Props) {
   const isRefetching = orderId ? orderChat.isRefetching : legacyRefetching;
   const refetch = orderId ? orderChat.refetch : refetchLegacy;
   const sendMutation = useSendSupportChatMessageMutation();
+  const uploadPhotoMutation = useUploadOrderChatPhotoMutation();
+  const { photo, errorKey: photoErrorKey, isPicking, pickPhoto, clearPhoto } = useOrderChatPhotoPicker();
+  const isSending = sendMutation.isPending || uploadPhotoMutation.isPending;
 
   useEffect(() => {
     if (!orderId) return;
@@ -126,7 +131,8 @@ export default function StoreChatScreen({ navigation, route }: Props) {
         chatBoxId: String(message.chatBoxId ?? message.chat_box_id ?? chatBoxId ?? ""),
         senderId: messageSender,
         receiverId: messageReceiver,
-        text: message.text,
+        text: message.text ?? '',
+        attachmentUrls: Array.isArray(message.attachmentUrls) ? message.attachmentUrls : [],
         createdAt: String(message.createdAt ?? new Date().toISOString()),
       };
 
@@ -182,7 +188,7 @@ export default function StoreChatScreen({ navigation, route }: Props) {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
+    if ((!text && !photo) || isSending) return;
 
     if (!senderId) {
       Alert.alert(t("chat_sender_missing"));
@@ -192,13 +198,21 @@ export default function StoreChatScreen({ navigation, route }: Props) {
       Alert.alert(t("chat_receiver_missing"));
       return;
     }
+    if (photo && !orderId) {
+      Alert.alert(t('chat_photo_order_only'));
+      return;
+    }
 
     try {
+      const attachmentUrls = photo && orderId
+        ? [(await uploadPhotoMutation.mutateAsync({ orderId, photo })).url]
+        : [];
       const response = await sendMutation.mutateAsync({
         senderId,
         receiverId: receiverId ?? "",
         orderId: orderId || undefined,
         text,
+        attachmentUrls,
       });
 
       const nextChatBoxId =
@@ -212,6 +226,7 @@ export default function StoreChatScreen({ navigation, route }: Props) {
       if (!orderId) cacheSupportChatBoxId({ chatBoxId: nextChatBoxId, receiverId });
 
       setInput("");
+      clearPhoto();
       setSocketMessages([]);
       // Avoid refetching against a stale/null key. When a new chatBoxId is created,
       // setting state above triggers the correct query automatically.
@@ -247,9 +262,15 @@ export default function StoreChatScreen({ navigation, route }: Props) {
             },
           ]}
         >
-          <Text style={styles.bubbleText} color={isMine ? theme.colors.buttonText : theme.colors.text}>
+          {item.attachmentUrls.map((url, index) => (
+            <Pressable key={`${item.id}:${index}`} onPress={() => void Linking.openURL(url)} accessibilityRole="button" accessibilityLabel={t('chat_photo_open')}>
+              <Image source={{ uri: url }} style={styles.messagePhoto} resizeMode="cover" />
+              <Text variant="caption" color={isMine ? theme.colors.buttonText : theme.colors.text}>{t('chat_photo_open')}</Text>
+            </Pressable>
+          ))}
+          {item.text ? <Text style={styles.bubbleText} color={isMine ? theme.colors.buttonText : theme.colors.text}>
             {item.text}
-          </Text>
+          </Text> : null}
         </View>
 
         <View style={[styles.metaRow, isMine ? styles.metaRowMine : styles.metaRowOther]}>
@@ -336,7 +357,20 @@ export default function StoreChatScreen({ navigation, route }: Props) {
           },
         ]}
       >
+        {photo ? (
+          <View style={styles.photoPreviewRow}>
+            <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+            <Text variant="caption" color={theme.colors.gray900} style={styles.photoPreviewName} numberOfLines={1}>{photo.fileName}</Text>
+            <Pressable onPress={clearPhoto} accessibilityRole="button" accessibilityLabel={t('chat_photo_remove')} style={styles.removePhotoButton}>
+              <Feather name="x" size={18} color={theme.colors.gray900} />
+            </Pressable>
+          </View>
+        ) : null}
+        {photoErrorKey ? <Text variant="caption" color={theme.colors.red500}>{t(photoErrorKey)}</Text> : null}
         <View style={[styles.composerInner, { backgroundColor: theme.colors.white }]}> 
+          {orderId ? <Pressable onPress={() => void pickPhoto()} disabled={isSending || isPicking} accessibilityRole="button" accessibilityLabel={t('chat_photo_attach')} style={styles.attachButton}>
+            {isPicking ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Feather name="plus" size={22} color={theme.colors.primary} />}
+          </Pressable> : null}
           <TextInput
             value={input}
             onChangeText={setInput}
@@ -349,16 +383,16 @@ export default function StoreChatScreen({ navigation, route }: Props) {
           />
           <Pressable
             onPress={handleSend}
-            disabled={sendMutation.isPending || input.trim().length === 0}
+            disabled={isSending || (input.trim().length === 0 && !photo)}
             style={[styles.sendIconBtn, { backgroundColor: theme.colors.primary }]}
           >
-            {sendMutation.isPending ? (
+            {isSending ? (
               <ActivityIndicator size="small" color={theme.colors.gray900} />
             ) : (
               <Feather
                 name="send"
                 size={20}
-                color={input.trim().length === 0 ? theme.colors.gray500 : theme.colors.buttonText}
+                color={input.trim().length === 0 && !photo ? theme.colors.gray500 : theme.colors.buttonText}
               />
             )}
           </Pressable>
@@ -467,6 +501,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  messagePhoto: {
+    width: 200,
+    height: 160,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -488,6 +528,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
+  photoPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  photoPreview: { width: 48, height: 48, borderRadius: 8 },
+  photoPreviewName: { flex: 1 },
+  removePhotoButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  attachButton: { width: 32, height: 40, alignItems: 'center', justifyContent: 'center' },
   composerInner: {
     minHeight: 52,
     borderRadius: 12,

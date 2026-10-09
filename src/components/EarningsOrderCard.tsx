@@ -8,13 +8,14 @@ import { useTranslations } from '../localization/LocalizationProvider';
 
 type Props = {
   item: EarningsHistoryItem;
+  storeTimezone?: string;
 };
 
 /**
  * Expandable order card used on the Earnings order detail screen.
  * Shows Order ID + status badge, Payment row, and collapsible Order Details.
  */
-export default function EarningsOrderCard({ item }: Props) {
+export default function EarningsOrderCard({ item, storeTimezone }: Props) {
   const { theme } = useAppTheme();
   const { formatAmount } = useCurrencyFormatter();
   const { t } = useTranslations('app');
@@ -99,9 +100,14 @@ export default function EarningsOrderCard({ item }: Props) {
               {formatAmount(item.net_earnings, 2)}
             </Text>
           </View>
-          <Text variant="caption" color={theme.colors.mutedText}>
-            {item.created_at}
-          </Text>
+          {item.delivered_at ? (
+            <Text variant="caption" color={theme.colors.mutedText}>
+              {new Intl.DateTimeFormat(undefined, {
+                dateStyle: 'medium', timeStyle: 'short',
+                ...(storeTimezone ? { timeZone: storeTimezone } : {}),
+              }).format(new Date(item.delivered_at))}
+            </Text>
+          ) : null}
         </View>
       )}
     </View>

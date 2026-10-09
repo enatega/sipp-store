@@ -12,6 +12,7 @@ import { useAppTheme } from "../theme/ThemeProvider";
 export type TabItem = {
   key: string;
   label: string;
+  badgeCount?: number;
 };
 
 type Props = {
@@ -91,6 +92,13 @@ export default function SegmentedTabs({
               <Text style={[styles.label, { color: theme.colors.gray600 }]}>
                 {tab.label}
               </Text>
+              {typeof tab.badgeCount === 'number' ? (
+                <View style={[styles.countBadge, { backgroundColor: isActive ? theme.colors.primary : theme.colors.gray200 }]}>
+                  <Text variant="caption" color={isActive ? theme.colors.buttonText : theme.colors.gray600} style={styles.countText}>
+                    {tab.badgeCount > 99 ? '99+' : tab.badgeCount}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </Pressable>
         );
@@ -100,6 +108,8 @@ export default function SegmentedTabs({
 }
 
 const styles = StyleSheet.create({
+  countBadge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
+  countText: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
   container: {
     flexDirection: "row",
     backgroundColor: "transparent",
@@ -121,6 +131,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 8,
     flexDirection: "row",
+    gap: 6,
   },
   label: {
     fontSize: 16,

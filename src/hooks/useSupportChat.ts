@@ -6,6 +6,7 @@ import {
   SendSupportChatMessageRequest,
   SendSupportChatMessageResponse,
   SupportChatMessage,
+  OrderChatPhoto,
 } from "../api/supportChatServiceTypes";
 
 type UseSupportChatMessagesOptions = {
@@ -61,5 +62,15 @@ export function useSendSupportChatMessageMutation(
   return useMutation<SendSupportChatMessageResponse, ApiError, SendSupportChatMessageRequest>({
     mutationFn: (data) => supportChatService.sendMessage(data),
     ...options,
+  });
+}
+
+export function useUploadOrderChatPhotoMutation() {
+  return useMutation<
+    { url: string; mimeType: string },
+    ApiError,
+    { orderId: string; photo: OrderChatPhoto }
+  >({
+    mutationFn: ({ orderId, photo }) => supportChatService.uploadOrderPhoto(orderId, photo),
   });
 }

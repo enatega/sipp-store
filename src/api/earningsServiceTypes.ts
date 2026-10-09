@@ -34,6 +34,7 @@ export interface EarningsGraphResponse {
   total_weeks: number;
   start_date: string;
   end_date: string;
+  storeTimezone?: string;
 }
 
 export interface EarningsDailyItem {
@@ -46,6 +47,7 @@ export interface EarningsDailyResponse {
   start_date: string | null;
   end_date: string | null;
   total_days: number;
+  storeTimezone?: string;
 }
 
 export interface EarningsSummaryResponse {
@@ -55,6 +57,7 @@ export interface EarningsSummaryResponse {
   total_earnings: number;
   start_date: string;
   end_date: string;
+  storeTimezone?: string;
 }
 
 export interface EarningsHistoryItem {
@@ -65,6 +68,7 @@ export interface EarningsHistoryItem {
   net_earnings: number;
   status: string;
   created_at: string;
+  delivered_at?: string | null;
   label: string;
 }
 
@@ -77,4 +81,5 @@ export interface EarningsHistoryResponse {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
   total_earnings: number;
+  storeTimezone?: string;
 }

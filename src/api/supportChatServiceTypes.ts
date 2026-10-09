@@ -4,14 +4,22 @@ export type SupportChatMessage = {
   senderId: string;
   receiverId: string;
   text: string;
+  attachmentUrls: string[];
   createdAt: string;
+};
+
+export type OrderChatPhoto = {
+  uri: string;
+  fileName: string;
+  mimeType: string;
 };
 
 export type SendSupportChatMessageRequest = {
   orderId?: string;
   senderId: string;
   receiverId: string;
-  text: string;
+  text?: string;
+  attachmentUrls?: string[];
 };
 
 export type SendSupportChatMessageResponse = {

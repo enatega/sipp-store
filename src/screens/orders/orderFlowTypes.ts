@@ -12,4 +12,5 @@ export type OrderScreenProps = {
   initialOrderType: OrderTypeFilter;
   onOrderTypeChange: (orderType: OrderTypeFilter) => void;
   onOrderFlow: (result: OrderFlowResult) => void;
+  newOrderCounts?: Record<OrderTypeFilter, number>;
 };

@@ -10,10 +10,12 @@ type Props = {
   customerProfileImage: string | null;
   orderType: 'delivery' | 'pickup';
   address: string | null;
+  addressExtras?: string | null;
+  deliveryInstructions?: string | null;
   theme: Theme;
 };
 
-export default function CustomerInfo({ customerName, customerProfileImage, orderType, address, theme }: Props) {
+export default function CustomerInfo({ customerName, customerProfileImage, orderType, address, addressExtras, deliveryInstructions, theme }: Props) {
   const { t } = useTranslations('app');
   const image = customerProfileImage && !/placehold\.co|placeholder/i.test(customerProfileImage)
     ? customerProfileImage : null;
@@ -40,7 +42,17 @@ export default function CustomerInfo({ customerName, customerProfileImage, order
         <View style={styles.copy}>
           <Text variant="caption" weight="semiBold" color={theme.colors.gray600}>{t('order_card_customer_name')}</Text>
           <Text weight="semiBold" color={theme.colors.gray900} numberOfLines={1}>{customerName || '—'}</Text>
-          {address ? <Text variant="caption" color={theme.colors.gray600} numberOfLines={2}>{address}</Text> : null}
+          {address ? <Text variant="caption" color={theme.colors.gray600}>{address}</Text> : null}
+          {orderType === 'delivery' && addressExtras?.trim() ? (
+            <Text variant="caption" color={theme.colors.gray900}>
+              {t('order_card_address_extras')}: {addressExtras.trim()}
+            </Text>
+          ) : null}
+          {orderType === 'delivery' && deliveryInstructions?.trim() ? (
+            <Text variant="caption" color={theme.colors.gray900}>
+              {t('order_card_delivery_instructions')}: {deliveryInstructions.trim()}
+            </Text>
+          ) : null}
         </View>
       </View>
       {orderType === 'delivery' && address ? (

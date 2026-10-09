@@ -12,13 +12,6 @@ import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'EarningsOrderDetail'>;
 
-function getNextDate(date: string) {
-  const [year, month, day] = date.split('-').map(Number);
-  const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
-
-  return nextDate.toISOString().slice(0, 10);
-}
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function EarningsOrderDetailScreen({ navigation, route }: Props) {
@@ -30,7 +23,7 @@ export default function EarningsOrderDetailScreen({ navigation, route }: Props) 
       page: 1,
       limit: 10,
       startDate: selectedDate,
-      endDate: getNextDate(selectedDate),
+      endDate: selectedDate,
     },
   });
 
@@ -53,7 +46,7 @@ export default function EarningsOrderDetailScreen({ navigation, route }: Props) 
         data={earningsHistoryData?.data ?? []}
         keyExtractor={(item) => item.order_id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <EarningsOrderCard item={item} />}
+        renderItem={({ item }) => <EarningsOrderCard item={item} storeTimezone={earningsHistoryData?.storeTimezone} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
     </View>

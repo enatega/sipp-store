@@ -48,6 +48,8 @@ export default function HomeTabScreen() {
   const [notice, setNotice] = useState<OrderFlowResult | null>(null);
   const { t } = useTranslations("app");
   const countParams = { offset: 0, limit: 1, orderType } as const;
+  const newDeliveryParams = { offset: 0, limit: 1, orderType: 'delivery' } as const;
+  const newPickupParams = { offset: 0, limit: 1, orderType: 'pickup' } as const;
   const ActiveOrderScreen = ORDER_TAB_SCREENS[activeOrderTab];
   const handleOrderFlow = (result: OrderFlowResult) => {
     setOrderType(result.orderType);
@@ -58,8 +60,12 @@ export default function HomeTabScreen() {
   const countQueries = useQueries({
     queries: [
       {
-        queryKey: newOrdersKeys.list(countParams),
-        queryFn: () => orderServices.getNewOrders(countParams),
+        queryKey: newOrdersKeys.list(newDeliveryParams),
+        queryFn: () => orderServices.getNewOrders(newDeliveryParams),
+      },
+      {
+        queryKey: newOrdersKeys.list(newPickupParams),
+        queryFn: () => orderServices.getNewOrders(newPickupParams),
       },
       {
         queryKey: inProgressOrdersKeys.list(countParams),
@@ -81,17 +87,23 @@ export default function HomeTabScreen() {
   });
 
   const ORDER_TABS: TabItem<OrderTab>[] = [
-    { key: 'new', label: t('orders_tab_new_orders'), badgeCount: countQueries[0].data?.total ?? 0 },
-    { key: 'inProgress', label: t('orders_tab_in_progress'), badgeCount: countQueries[1].data?.total ?? 0 },
-    { key: 'ready', label: t('orders_tab_ready'), badgeCount: countQueries[2].data?.total ?? 0 },
-    { key: 'pickup', label: t('orders_tab_pickup_short'), badgeCount: countQueries[3].data?.total ?? 0 },
-    { key: 'completed', label: t('orders_tab_completed'), badgeCount: countQueries[4].data?.total ?? 0 },
+    { key: 'new', label: t('orders_tab_new_orders'), badgeCount: (countQueries[0].data?.total ?? 0) + (countQueries[1].data?.total ?? 0) },
+    { key: 'inProgress', label: t('orders_tab_in_progress'), badgeCount: countQueries[2].data?.total ?? 0 },
+    { key: 'ready', label: t('orders_tab_ready'), badgeCount: countQueries[3].data?.total ?? 0 },
+    { key: 'pickup', label: t('orders_tab_pickup_short'), badgeCount: countQueries[4].data?.total ?? 0 },
+    { key: 'completed', label: t('orders_tab_completed'), badgeCount: countQueries[5].data?.total ?? 0 },
   ];
 
   return (
     <TabShell titleKey="orders_title">
       <TabBar tabs={ORDER_TABS} activeTab={activeOrderTab} onTabPress={setActiveOrderTab} />
-      <ActiveOrderScreen key={`${activeOrderTab}:${orderType}`} initialOrderType={orderType} onOrderTypeChange={setOrderType} onOrderFlow={handleOrderFlow} />
+      <ActiveOrderScreen
+        key={`${activeOrderTab}:${orderType}`}
+        initialOrderType={orderType}
+        onOrderTypeChange={setOrderType}
+        onOrderFlow={handleOrderFlow}
+        newOrderCounts={{ delivery: countQueries[0].data?.total ?? 0, pickup: countQueries[1].data?.total ?? 0 }}
+      />
       <OrderActionNotice
         visible={Boolean(notice)}
         title={notice ? t(NOTICE_COPY[notice.notice].title) : ''}

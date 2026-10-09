@@ -3,6 +3,7 @@ import {
   SendSupportChatMessageRequest,
   SendSupportChatMessageResponse,
   SupportChatMessage,
+  OrderChatPhoto,
 } from "./supportChatServiceTypes";
 
 const BASE_PATH = "/apps/deliveries/chat";
@@ -17,10 +18,13 @@ function normalizeMessage(raw: Record<string, unknown>): SupportChatMessage | nu
   const receiverId =
     String(raw.receiverId ?? raw.receiver_id ?? "").trim();
   const text = String(raw.text ?? raw.message ?? "").trim();
+  const attachmentUrls = Array.isArray(raw.attachmentUrls)
+    ? raw.attachmentUrls.filter((url): url is string => typeof url === 'string' && Boolean(url.trim()))
+    : [];
   const createdAt =
     String(raw.createdAt ?? raw.created_at ?? new Date().toISOString()).trim();
 
-  if (!id || !senderId || !receiverId || !text) {
+  if (!id || !senderId || !receiverId || (!text && attachmentUrls.length === 0)) {
     return null;
   }
 
@@ -30,6 +34,7 @@ function normalizeMessage(raw: Record<string, unknown>): SupportChatMessage | nu
     senderId,
     receiverId,
     text,
+    attachmentUrls,
     createdAt,
   };
 }
@@ -50,6 +55,19 @@ function normalizeMessagesPayload(payload: unknown): SupportChatMessage[] {
 }
 
 export const supportChatService = {
+  uploadOrderPhoto(orderId: string, photo: OrderChatPhoto) {
+    const form = new FormData();
+    form.append('file', {
+      uri: photo.uri,
+      name: photo.fileName,
+      type: photo.mimeType,
+    } as unknown as Blob);
+    return apiClient.post<{ url: string; mimeType: string }>(
+      `${BASE_PATH}/order/${orderId}/store_rider/upload`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
   getOrderUnreadCounts() {
     return apiClient.get<{ total: number; byOrderId: Record<string, number> }>(`${BASE_PATH}/order-unread`);
   },
@@ -70,7 +88,10 @@ export const supportChatService = {
 
   async sendMessage(data: SendSupportChatMessageRequest) {
     if (data.orderId) {
-      return apiClient.post<SendSupportChatMessageResponse>(`${BASE_PATH}/order/${data.orderId}/store_rider/send`, { text: data.text });
+      return apiClient.post<SendSupportChatMessageResponse>(`${BASE_PATH}/order/${data.orderId}/store_rider/send`, {
+        text: data.text,
+        attachmentUrls: data.attachmentUrls,
+      });
     }
     const response = await apiClient.post<SendSupportChatMessageResponse>(`${BASE_PATH}/send`, data);
     return response;

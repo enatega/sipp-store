@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import GenericOrderList from "../../components/orders/GenericOrderList";
 import { useNewOrders } from "../../hooks/useOrderQueries";
 import {
@@ -13,12 +13,14 @@ import { Order, OrderStatus } from "../../api/orderServicesTypes";
 import { startOrderAlertLoop, stopOrderAlertLoop } from "../../hooks/orderAlertSound";
 import type { OrderScreenProps } from './orderFlowTypes';
 
-export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, onOrderFlow }: OrderScreenProps) {
+export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, onOrderFlow, newOrderCounts }: OrderScreenProps) {
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   const [rejectingOrderCode, setRejectingOrderCode] = useState<string | null>(null);
   const [rejectingOrderType, setRejectingOrderType] = useState<Order['orderType']>('delivery');
   const [modalVisible, setModalVisible] = useState(false);
+  const acceptingOrderIdsRef = useRef<Set<string>>(new Set());
+  const [acceptingOrderIds, setAcceptingOrderIds] = useState<string[]>([]);
 
   const acceptMutation = useAcceptOrder();
   const rejectMutation = useRejectOrder();
@@ -66,28 +68,39 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
     if (!pendingOrder) return;
 
     const { orderId, orderCode, orderType } = pendingOrder;
+    if (acceptingOrderIdsRef.current.has(orderId)) return;
+    acceptingOrderIdsRef.current.add(orderId);
+    setAcceptingOrderIds((ids) => [...ids, orderId]);
     setModalVisible(false);
     setPendingOrder(null);
 
+    let accepted = false;
+    let needsTime = false;
     try {
       await acceptMutation.mutateAsync(orderId);
+      accepted = true;
+      try {
+        await updateStatusMutation.mutateAsync({
+          orderId,
+          data: { status: OrderStatus.PREPARING },
+        });
+        await updateTimeMutation.mutateAsync({
+          orderId,
+          data: { preparingTimeInMinutes: minutes },
+        });
+      } catch {
+        needsTime = true;
+      }
     } catch {
-      onOrderFlow({ tab: 'new', orderType, orderCode, notice: 'failed' });
-      return;
+      accepted = false;
+    } finally {
+      acceptingOrderIdsRef.current.delete(orderId);
+      setAcceptingOrderIds((ids) => ids.filter((id) => id !== orderId));
     }
-    try {
-      await updateStatusMutation.mutateAsync({
-        orderId,
-        data: { status: OrderStatus.PREPARING },
-      });
-      await updateTimeMutation.mutateAsync({
-        orderId,
-        data: { preparingTimeInMinutes: minutes },
-      });
-      onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'accepted' });
-    } catch {
-      onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'acceptedNeedsTime' });
-    }
+
+    onOrderFlow(accepted
+      ? { tab: 'inProgress', orderType, orderCode, notice: needsTime ? 'acceptedNeedsTime' : 'accepted' }
+      : { tab: 'new', orderType, orderCode, notice: 'failed' });
   };
 
   const closeModal = () => {
@@ -98,17 +111,13 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
   const renderActions = (order: Order) => ({
     onAccept: () => handleAccept(order),
     onReject: () => handleReject(order.orderId, order.orderType, order.orderCode),
-    isAccepting:
-      acceptMutation.isPending ||
-      updateStatusMutation.isPending ||
-      updateTimeMutation.isPending,
-    isRejecting: rejectMutation.isPending,
+    isAccepting: acceptingOrderIds.includes(order.orderId),
+    isRejecting: rejectMutation.isPending && rejectingOrderId === order.orderId,
   });
 
   const handleOrdersDataChange = useCallback((orders: Order[]) => {
     const hasPendingActionableOrder = orders.some((order) =>
-      (order.status === OrderStatus.PENDING || order.status === OrderStatus.SCHEDULED)
-      && order.canAccept,
+      order.status === OrderStatus.PENDING && order.canAccept,
     );
 
     if (hasPendingActionableOrder) {
@@ -127,6 +136,7 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
         initialOrderType={initialOrderType}
         onOrderTypeChange={onOrderTypeChange}
         onOrdersDataChange={handleOrdersDataChange}
+        orderTypeCounts={newOrderCounts}
         autoScrollToTopOnNewItem
       />
       <SetPreparingTimeModal

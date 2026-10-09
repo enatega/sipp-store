@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,10 +25,12 @@ export default function LoginScreen() {
   const { t } = useTranslations('app');
   const { theme } = useAppTheme();
   const { height } = useWindowDimensions();
-  const compact = height < 740;
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const compact = height < 740 || keyboardVisible;
   const loginMutation = useLoginMutation();
   const { getExpoPushToken, isLoading: isFetchingExpoPushToken } = useExpoPushToken();
   const passwordRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -35,6 +38,20 @@ export default function LoginScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [focusedField, setFocusedField] = useState<FocusedField>(null);
   const isSubmitting = loginMutation.isPending || isFetchingExpoPushToken;
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  const revealForm = () => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+  };
+
+  useEffect(() => {
+    if (keyboardVisible) revealForm();
+  }, [keyboardVisible]);
 
   const validate = () => {
     let valid = true;
@@ -73,6 +90,7 @@ export default function LoginScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -80,11 +98,13 @@ export default function LoginScreen() {
         >
           <View style={styles.content}>
             <Text weight="bold" color={theme.colors.loginAccent} style={styles.wordmark}>{t('auth_brand_name')}</Text>
-            <Image
-              source={require('../assets/images/storeLoginHero.png')}
-              style={[styles.heroImage, compact && styles.heroImageCompact]}
-              resizeMode="contain"
-            />
+            {!keyboardVisible ? (
+              <Image
+                source={require('../assets/images/storeLoginHero.png')}
+                style={[styles.heroImage, compact && styles.heroImageCompact]}
+                resizeMode="contain"
+              />
+            ) : null}
 
             <View style={styles.intro}>
               <Text weight="bold" color={theme.colors.gray900} style={styles.title}>{t('auth_access_store')}</Text>
@@ -99,7 +119,7 @@ export default function LoginScreen() {
                   <TextInput
                     value={email}
                     onChangeText={(value) => { setEmail(value); if (emailError) setEmailError(''); }}
-                    onFocus={() => setFocusedField('email')}
+                    onFocus={() => { setFocusedField('email'); revealForm(); }}
                     onBlur={() => setFocusedField(null)}
                     placeholder={t('auth_email_placeholder')}
                     placeholderTextColor={theme.colors.gray500}
@@ -124,7 +144,7 @@ export default function LoginScreen() {
                     ref={passwordRef}
                     value={password}
                     onChangeText={(value) => { setPassword(value); if (passwordError) setPasswordError(''); }}
-                    onFocus={() => setFocusedField('password')}
+                    onFocus={() => { setFocusedField('password'); revealForm(); }}
                     onBlur={() => setFocusedField(null)}
                     placeholder={t('auth_password_placeholder')}
                     placeholderTextColor={theme.colors.gray500}

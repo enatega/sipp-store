@@ -71,6 +71,8 @@ export interface Order {
   customerProfileImage: string | null;
   customerPhone: string | null;
   deliveryAddress: string | null;
+  deliveryAddressExtras?: string | null;
+  deliveryInstructions?: string | null;
   pickupAddress: string | null;
   orderAmount: number;
   orderSummary?: OrderSummary | null;

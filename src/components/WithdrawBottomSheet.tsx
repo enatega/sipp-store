@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
-  KeyboardEvent,
   Modal,
   Platform,
   Pressable,
@@ -40,13 +39,12 @@ export default function WithdrawBottomSheet({
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const handleConfirm = () => {
     if (isSubmitting) return;
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0) {
-      setError("Please enter a valid amount");
+      setError(t("wallet_invalid_amount"));
       return;
     }
     setError("");
@@ -59,27 +57,6 @@ export default function WithdrawBottomSheet({
     setError("");
     onClose();
   };
-
-  useEffect(() => {
-    const handleShow = (event: KeyboardEvent) => {
-      setKeyboardHeight(event.endCoordinates?.height ?? 0);
-    };
-
-    const handleHide = () => {
-      setKeyboardHeight(0);
-    };
-
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const showSubscription = Keyboard.addListener(showEvent, handleShow);
-    const hideSubscription = Keyboard.addListener(hideEvent, handleHide);
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   return (
     <Modal
@@ -104,7 +81,6 @@ export default function WithdrawBottomSheet({
                 {
                   backgroundColor: theme.colors.background,
                   paddingBottom: insets.bottom + 16,
-                  marginBottom: Platform.OS === "android" ? keyboardHeight : 0,
                 },
               ]}
             >
@@ -169,13 +145,14 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.58)",
   },
   kvWrapper: {
     flex: 1,
     justifyContent: "flex-end",
   },
   sheet: {
+    maxHeight: "80%",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 12,

@@ -66,6 +66,14 @@ module.exports = {
       "expo-secure-store",
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          photosPermission: "Allow Sipp Store to select photos for order chats.",
+          cameraPermission: "Allow Sipp Store to take photos for order chats.",
+          microphonePermission: false,
+        },
+      ],
+      [
         "expo-navigation-bar",
         {
           backgroundColor: "#E5E7EB",

@@ -48,6 +48,7 @@ type Props = {
   onOrderTypeChange?: (orderType: OrderTypeFilter) => void;
   onOrdersDataChange?: (orders: Order[]) => void;
   autoScrollToTopOnNewItem?: boolean;
+  orderTypeCounts?: Record<OrderTypeFilter, number>;
 };
 
 export default function GenericOrderList({
@@ -57,6 +58,7 @@ export default function GenericOrderList({
   onOrderTypeChange,
   onOrdersDataChange,
   autoScrollToTopOnNewItem = false,
+  orderTypeCounts,
 }: Props) {
   const [filterType, setFilterType] = useState<OrderTypeFilter>(initialOrderType);
   const listRef = useRef<any>(null);
@@ -111,8 +113,8 @@ export default function GenericOrderList({
   const isLoadingAny = isLoading || isRefetching || isFetchingNextPage;
 
   const tabs = [
-    { key: "delivery", label: t("orders_tab_delivery") },
-    { key: "pickup", label: t("orders_tab_pickup") },
+    { key: "delivery", label: t("orders_tab_delivery"), badgeCount: orderTypeCounts?.delivery },
+    { key: "pickup", label: t("orders_tab_pickup"), badgeCount: orderTypeCounts?.pickup },
   ];
 
   const renderFooter = () => {

@@ -105,8 +105,7 @@ export default function OrderCard({
     order.status === OrderStatus.OUT_FOR_DELIVERY ||
     order.status === OrderStatus.ARRIVED;
 
-  const isNewOrderActionable =
-    order.status === OrderStatus.PENDING || order.status === OrderStatus.SCHEDULED;
+  const isNewOrderActionable = order.status === OrderStatus.PENDING;
   const canAcceptOrder =
     Boolean(onAccept) && (order.canAccept || isNewOrderActionable);
   const canRejectOrder =
@@ -150,6 +149,8 @@ export default function OrderCard({
         customerProfileImage={order.customerProfileImage}
         orderType={order.orderType}
         address={displayAddress}
+        addressExtras={order.orderType === "delivery" ? order.deliveryAddressExtras : null}
+        deliveryInstructions={order.orderType === "delivery" ? order.deliveryInstructions : null}
         theme={theme}
       />
       <OrderItems

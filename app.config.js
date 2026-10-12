@@ -1,8 +1,8 @@
 module.exports = {
   expo: {
     name: "Sipp Store",
-    slug: "sipp-store",
-    owner: "sipp-delivery",
+    slug: "enatega-deliveries-store-app",
+    owner: "ninjas_code",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -14,7 +14,7 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.sipp.store.app",
+      bundleIdentifier: "com.enatega.deliveries.store",
       splash: {
         image: "./assets/splash-light.png",
         resizeMode: "cover",
@@ -45,7 +45,7 @@ module.exports = {
         },
       },
       googleServicesFile: "./google-services.json",
-      package: "com.sipp.store.app",
+      package: "com.enatega.deliveries.store",
       edgeToEdgeEnabled: false,
     },
     androidNavigationBar: {
@@ -57,7 +57,7 @@ module.exports = {
       favicon: "./assets/favicon.png",
     },
     updates: {
-      url: "https://u.expo.dev/ac761cd8-fdca-4498-b679-e174b6cfb3ac",
+      url: "https://u.expo.dev/5cf97681-9db5-457b-bf07-07c5ff3f3a9d",
     },
     runtimeVersion: {
       policy: "appVersion",
@@ -93,7 +93,7 @@ module.exports = {
     ],
     extra: {
       eas: {
-        projectId: "ac761cd8-fdca-4498-b679-e174b6cfb3ac",
+        projectId: "5cf97681-9db5-457b-bf07-07c5ff3f3a9d",
       },
     },
   },

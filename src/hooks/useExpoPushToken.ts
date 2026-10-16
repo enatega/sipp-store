@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import { ensureStoreNotificationChannels } from '../api/orderNotificationChannels';
 
 const DEFAULT_ANDROID_CHANNEL_ID = "default";
 
@@ -32,6 +33,7 @@ export function useExpoPushToken() {
     setIsLoading(true);
 
     try {
+      await ensureStoreNotificationChannels();
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync(
           DEFAULT_ANDROID_CHANNEL_ID,

@@ -1,5 +1,6 @@
 import React from "react";
 import { View } from "react-native";
+import Text from "../../Text";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAppTheme } from "../../../theme/ThemeProvider";
@@ -21,6 +22,7 @@ import { useStoreOrderChatUnreadQuery } from "../../../hooks/useSupportChat";
 
 type Props = {
   order: Order;
+  highlighted?: boolean;
   onAccept?: (orderId: string) => void;
   onReject?: (orderId: string) => void;
   onMarkReady?: (orderId: string) => void;
@@ -35,6 +37,7 @@ type Props = {
 
 export default function OrderCard({
   order,
+  highlighted = false,
   onAccept,
   onReject,
   onMarkReady,
@@ -124,6 +127,9 @@ export default function OrderCard({
       : order.status === OrderStatus.READY
       ? t("order_card_ready_for_pickup")
       : getReadableRiderStatus(order.status, order.riderStatus, order.riderStatusLabel)) ||
+    (order.status === OrderStatus.REJECTED ? t('order_card_rejected')
+      : order.status === OrderStatus.ACCEPTED || order.status === OrderStatus.PREPARING || order.status === OrderStatus.RIDER_ASSIGNED
+        ? t('order_card_in_progress') : null) ||
     (order.riderArrived ? t("order_card_rider_arrived") : null) || order.statusLabel;
   const headerStatusTone =
     order.status === OrderStatus.READY || order.status === OrderStatus.DELIVERED || order.riderArrived
@@ -135,7 +141,7 @@ export default function OrderCard({
         : "blue";
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.gray200, shadowColor: theme.colors.shadow }]}>
+    <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: highlighted ? theme.colors.primary : theme.colors.gray200, shadowColor: theme.colors.shadow }]}>
       <OrderHeader
         orderCode={order.orderCode}
         orderType={order.orderType}
@@ -144,6 +150,11 @@ export default function OrderCard({
         headerStatusLabel={headerStatusLabel}
         headerStatusTone={headerStatusTone}
       />
+      {order.status === OrderStatus.PENDING && order.storeAcceptanceRemindedAt ? (
+        <View style={[styles.commentBox, { backgroundColor: theme.colors.gray50 }]}>
+          <Text style={[styles.commentText, { color: theme.colors.gray900 }]} weight="medium">{t('order_card_response_overdue')}</Text>
+        </View>
+      ) : null}
       <CustomerInfo
         customerName={order.customerName}
         customerProfileImage={order.customerProfileImage}
@@ -160,6 +171,12 @@ export default function OrderCard({
         theme={theme}
       />
       <CommentSection comment={order.restaurantNote} theme={theme} />
+      {order.status === OrderStatus.REJECTED && order.rejectionReason ? (
+        <View style={[styles.commentBox, { backgroundColor: theme.colors.gray50 }]}>
+          <Text style={[styles.commentLabel, { color: theme.colors.gray600 }]} weight="medium">{t('order_card_rejection_reason')}</Text>
+          <Text style={[styles.commentText, { color: theme.colors.gray900 }]} weight="medium">{order.rejectionReason}</Text>
+        </View>
+      ) : null}
 
       {hasAssignedRider && order.orderType === "delivery" ? (
         <RiderContactPanel

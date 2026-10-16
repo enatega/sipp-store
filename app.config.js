@@ -3,7 +3,7 @@ module.exports = {
     name: "Sipp Store",
     slug: "sipp-store",
     owner: "sipp-delivery",
-    version: "1.0.0",
+    version: "1.0.3",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -24,9 +24,6 @@ module.exports = {
           resizeMode: "cover",
           backgroundColor: "#ffffff",
         },
-      },
-      infoPlist: {
-        UIBackgroundModes: ["audio"],
       },
     },
     android: {
@@ -87,7 +84,7 @@ module.exports = {
       [
         "expo-notifications",
         {
-          sounds: ["./src/assets/sound/beep3.mp3"],
+          sounds: ["./src/assets/sound/beep3.mp3", "./src/assets/sound/new_order_chime.wav", "./src/assets/sound/new_order_beep.wav", "./src/assets/sound/new_order_beep_5s.wav"],
         },
       ],
     ],

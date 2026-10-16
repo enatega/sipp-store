@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../navigation/MainTabsNavigator';
 import { TabItem } from '../components/TabBar';
 import TabBar from '../components/TabBar';
 import TabShell from '../components/TabShell';
@@ -10,6 +13,7 @@ import {
   completedOrdersKeys,
   inProgressOrdersKeys,
   newOrdersKeys,
+  ordersKeys,
   pickupOrdersKeys,
   readyOrdersKeys,
 } from '../api/queryKeys';
@@ -31,6 +35,14 @@ const ORDER_TAB_SCREENS: Record<OrderTab, React.ComponentType<OrderScreenProps>>
   completed: CompletedScreen,
 };
 
+function orderTabForStatus(status: string): OrderTab {
+  return status === 'pending' || status === 'scheduled' ? 'new'
+    : status === 'accepted' || status === 'preparing' || status === 'rider_assigned' ? 'inProgress'
+    : status === 'ready' ? 'ready'
+    : status === 'picked_up' || status === 'out_for_delivery' || status === 'arrived' ? 'pickup'
+    : 'completed';
+}
+
 const NOTICE_COPY: Record<OrderFlowResult['notice'], { title: string; message: string; tone: 'success' | 'warning' | 'error' }> = {
   accepted: { title: 'order_flow_accepted_title', message: 'order_flow_accepted_message', tone: 'success' },
   acceptedNeedsTime: { title: 'order_flow_accepted_title', message: 'order_flow_needs_time_message', tone: 'warning' },
@@ -42,18 +54,52 @@ const NOTICE_COPY: Record<OrderFlowResult['notice'], { title: string; message: s
   failed: { title: 'order_flow_failed_title', message: 'order_flow_failed_message', tone: 'error' },
 };
 
-export default function HomeTabScreen() {
+type Props = BottomTabScreenProps<MainTabParamList, 'HomeTab'>;
+
+export default function HomeTabScreen({ route, navigation }: Props) {
+  const queryClient = useQueryClient();
   const [activeOrderTab, setActiveOrderTab] = useState<OrderTab>('new');
+  const [visitedTabs, setVisitedTabs] = useState<OrderTab[]>(['new']);
   const [orderType, setOrderType] = useState<OrderTypeFilter>('delivery');
   const [notice, setNotice] = useState<OrderFlowResult | null>(null);
+  const [highlight, setHighlight] = useState<{ tab: OrderTab; code: string } | null>(null);
+  const focusOrderId = route.params?.orderId;
+  const focusedOrder = useQuery({
+    queryKey: ['store-order-route', focusOrderId],
+    queryFn: () => orderServices.getOrderRouteDetail(focusOrderId!),
+    enabled: Boolean(focusOrderId),
+    refetchOnMount: 'always',
+  });
+  useEffect(() => {
+    if (!focusedOrder.data) return;
+    const { status, orderType } = focusedOrder.data;
+    setOrderType(orderType);
+    setActiveOrderTab(orderTabForStatus(status));
+  }, [focusedOrder.data]);
+  useEffect(() => {
+    setVisitedTabs((current) => current.includes(activeOrderTab) ? current : [...current, activeOrderTab]);
+  }, [activeOrderTab]);
+  useEffect(() => {
+    if (!highlight) return;
+    const timeout = setTimeout(() => setHighlight(null), 4500);
+    return () => clearTimeout(timeout);
+  }, [highlight]);
   const { t } = useTranslations("app");
+  const clearOrderFocus = () => navigation.setParams({ orderId: undefined });
   const countParams = { offset: 0, limit: 1, orderType } as const;
   const newDeliveryParams = { offset: 0, limit: 1, orderType: 'delivery' } as const;
   const newPickupParams = { offset: 0, limit: 1, orderType: 'pickup' } as const;
-  const ActiveOrderScreen = ORDER_TAB_SCREENS[activeOrderTab];
+  const mountedTabs = visitedTabs.includes(activeOrderTab) ? visitedTabs : [...visitedTabs, activeOrderTab];
   const handleOrderFlow = (result: OrderFlowResult) => {
-    setOrderType(result.orderType);
-    setActiveOrderTab(result.tab);
+    if (result.notice !== 'failed' && result.navigate !== false) {
+      clearOrderFocus();
+      setOrderType(result.orderType);
+      setActiveOrderTab(result.tab);
+      if (result.orderCode) setHighlight({ tab: result.tab, code: result.orderCode });
+    } else if (result.notice === 'failed') {
+      void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      if (focusOrderId) void focusedOrder.refetch();
+    }
     setNotice(result);
   };
 
@@ -96,21 +142,33 @@ export default function HomeTabScreen() {
 
   return (
     <TabShell titleKey="orders_title">
-      <TabBar tabs={ORDER_TABS} activeTab={activeOrderTab} onTabPress={setActiveOrderTab} />
-      <ActiveOrderScreen
-        key={`${activeOrderTab}:${orderType}`}
-        initialOrderType={orderType}
-        onOrderTypeChange={setOrderType}
-        onOrderFlow={handleOrderFlow}
-        newOrderCounts={{ delivery: countQueries[0].data?.total ?? 0, pickup: countQueries[1].data?.total ?? 0 }}
-      />
+      <TabBar tabs={ORDER_TABS} activeTab={activeOrderTab} onTabPress={(tab) => {
+        clearOrderFocus();
+        setActiveOrderTab(tab);
+      }} />
+      {mountedTabs.map((tab) => {
+        const OrderScreen = ORDER_TAB_SCREENS[tab];
+        return <View key={tab} style={{ flex: 1, display: tab === activeOrderTab ? 'flex' : 'none' }}>
+          <OrderScreen
+            initialOrderType={orderType}
+            onOrderTypeChange={(nextType) => {
+              if (focusOrderId) clearOrderFocus();
+              setOrderType(nextType);
+            }}
+            onOrderFlow={handleOrderFlow}
+            focusOrderId={tab === activeOrderTab ? focusOrderId : undefined}
+            highlightOrderCode={highlight?.tab === tab ? highlight.code : null}
+            onClearOrderFocus={clearOrderFocus}
+            newOrderCounts={{ delivery: countQueries[0].data?.total ?? 0, pickup: countQueries[1].data?.total ?? 0 }}
+          />
+        </View>;
+      })}
       <OrderActionNotice
         visible={Boolean(notice)}
         title={notice ? t(NOTICE_COPY[notice.notice].title) : ''}
         message={notice ? t(NOTICE_COPY[notice.notice].message) : ''}
         tone={notice ? NOTICE_COPY[notice.notice].tone : 'success'}
         orderCode={notice?.orderCode}
-        buttonLabel={t(notice?.notice === 'failed' ? 'order_flow_try_again' : 'order_flow_continue')}
         onClose={() => setNotice(null)}
       />
     </TabShell>

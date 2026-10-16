@@ -43,6 +43,7 @@ export interface OrderItem {
   unitPrice: number;
   totalPrice: number;
   selectedOptions: unknown;
+  itemNote?: string | null;
 }
 
 export interface OrderSummary {
@@ -65,6 +66,8 @@ export interface Order {
   orderId: string;
   orderCode: string;
   status: OrderStatus;
+  rejectionReason?: string | null;
+  storeAcceptanceRemindedAt?: string | null;
   statusLabel: string; // e.g. "New Order", "In Progress", "Ready", "Pickup", "Completed"
   orderType: OrderType;
   customerName: string;

@@ -16,6 +16,12 @@ import { apiConfig } from "./apiConfig";
 
 const BASE_PATH = "/apps/deliveries/store/home/orders";
 
+export type StoreOrderRouteDetail = {
+  orderId: string;
+  status: string;
+  orderType: "delivery" | "pickup";
+};
+
 function getApiOrigin() {
   try {
     return new URL(apiConfig.baseUrl).origin;
@@ -273,6 +279,8 @@ async function getOrdersWithDebug(
 }
 
 export const orderServices = {
+  getOrderRouteDetail: (orderId: string) =>
+    apiClient.get<StoreOrderRouteDetail>(`${BASE_PATH}/${orderId}`),
   // ─── New Orders (pending/scheduled) ─────────────────────────────
   getNewOrders: (params: GetOrdersParams = {}) =>
     getOrdersWithDebug("new", `${BASE_PATH}/new`, params),

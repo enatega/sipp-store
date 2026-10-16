@@ -62,7 +62,7 @@ export default function NotificationsScreen({ navigation }: Props) {
       markRead.mutate(item.id);
     }
     const orderId = item.data?.orderId ?? item.deep_link?.match(/^\/orders\/([0-9a-f-]{36})$/i)?.[1];
-    if (orderId) navigation.navigate('StoreOrderDetail', { orderId });
+    if (orderId) navigation.navigate('Home', { screen: 'HomeTab', params: { orderId } });
   };
 
   return (

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useLogoutMutation } from "../hooks/useAuthMutations";
 import { useAvailabilityQuery } from "../hooks/useProfileQueries";
 import { useUpdateAvailability } from "../hooks/useProfileMutations";
+import { useTranslations } from "../localization/LocalizationProvider";
 
 const DRAWER_WIDTH = 300;
 const ANIMATION_DURATION = 280;
@@ -38,7 +39,10 @@ export function useSidebar({
   onSwitchTab,
 }: UseSidebarOptions) {
   const { session } = useAuth();
-  const logoutMutation = useLogoutMutation();
+  const { t } = useTranslations("app");
+  const logoutMutation = useLogoutMutation({
+    onError: () => Alert.alert(t("auth_logout"), t("auth_logout_error")),
+  });
   const { data: availabilityData, isLoading: availabilityLoading } =
     useAvailabilityQuery();
   const updateAvailability = useUpdateAvailability();

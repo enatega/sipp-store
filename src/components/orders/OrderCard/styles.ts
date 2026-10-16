@@ -209,6 +209,20 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  itemNote: {
+    borderRadius: 8,
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  itemNoteLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  itemNoteText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   itemName: {
     fontSize: 14,
     lineHeight: 20,

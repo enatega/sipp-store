@@ -25,23 +25,24 @@ import {
   pickupOrdersKeys,
   completedOrdersKeys,
 } from "../api/queryKeys";
-import { PaginatedOrdersResponse } from "../api/orderServicesTypes";
+import { Order, PaginatedOrdersResponse } from "../api/orderServicesTypes";
+import { getCachedStoreOrder, moveStoreOrderAfterConfirmation } from './storeOrderHandoffCache';
 
 // ─── Accept Order ─────────────────────────────────────────────────
 export function useAcceptOrder(
-  options?: UseMutationOptions<AcceptOrderResponse, ApiError, string>,
+  options?: UseMutationOptions<AcceptOrderResponse, ApiError, { orderId: string; order: Order }>,
 ) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (orderId: string) => orderServices.acceptOrder(orderId),
-    onSuccess: (data, orderId, onMutateResult, context) => {
-      // Invalidate all order lists because the order moved from "new" to "in-progress"
-      queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
-      options?.onSuccess?.(data, orderId, onMutateResult, context);
+  return useMutation<AcceptOrderResponse, ApiError, { orderId: string; order: Order }>({
+    mutationFn: ({ orderId }) => orderServices.acceptOrder(orderId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      moveStoreOrderAfterConfirmation(queryClient, ['new'], 'inProgress', variables.orderId, {
+        status: data.status,
+        canAccept: false,
+      }, variables.order);
+      void queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
+      options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     ...options,
   });
@@ -52,19 +53,24 @@ export function useRejectOrder(
   options?: UseMutationOptions<
     RejectOrderResponse,
     ApiError,
-    { orderId: string; data: RejectOrderRequest }
+    { orderId: string; data: RejectOrderRequest },
+    Order | undefined
   >,
 ) {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<RejectOrderResponse, ApiError, { orderId: string; data: RejectOrderRequest }, Order | undefined>({
     mutationFn: ({ orderId, data }) => orderServices.rejectOrder(orderId, data),
+    onMutate: ({ orderId }) => getCachedStoreOrder(queryClient, ['new', 'inProgress'], orderId),
     onSuccess: (data, variables, onMutateResult, context) => {
-      // Invalidate all lists because rejected order disappears from active tabs
-      queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
+      moveStoreOrderAfterConfirmation(queryClient, ['new', 'inProgress'], 'completed', variables.orderId, {
+        status: data.status,
+        rejectionReason: variables.data.reason,
+        canAccept: false,
+        canReject: false,
+      }, onMutateResult);
+      void queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     ...options,
@@ -76,20 +82,39 @@ export function useUpdateOrderStatus(
   options?: UseMutationOptions<
     UpdateOrderStatusResponse,
     ApiError,
-    { orderId: string; data: UpdateOrderStatusRequest }
+    { orderId: string; data: UpdateOrderStatusRequest },
+    Order | undefined
   >,
 ) {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<UpdateOrderStatusResponse, ApiError, { orderId: string; data: UpdateOrderStatusRequest }, Order | undefined>({
     mutationFn: ({ orderId, data }) =>
       orderServices.updateOrderStatus(orderId, data),
+    onMutate: ({ orderId }) => getCachedStoreOrder(queryClient, ['inProgress', 'ready', 'pickup'], orderId),
     onSuccess: (response, variables, onMutateResult, context) => {
-      // Invalidate affected lists based on new status
-      // For example, if moving to "ready", it leaves in-progress and enters ready
-      queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
+      const destination = response.status === OrderStatus.READY ? 'ready'
+        : response.status === OrderStatus.PICKED_UP ? 'pickup'
+        : response.status === OrderStatus.DELIVERED ? 'completed' : null;
+      if (destination) {
+        moveStoreOrderAfterConfirmation(
+          queryClient,
+          destination === 'ready' ? ['inProgress'] : destination === 'pickup' ? ['ready'] : ['pickup'],
+          destination,
+          variables.orderId,
+          { status: response.status },
+          onMutateResult,
+        );
+      }
+      if (destination === 'ready') {
+        void queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
+      } else if (destination === 'pickup') {
+        void queryClient.invalidateQueries({ queryKey: readyOrdersKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
+      } else if (destination === 'completed') {
+        void queryClient.invalidateQueries({ queryKey: pickupOrdersKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: completedOrdersKeys.lists() });
+      }
       options?.onSuccess?.(response, variables, onMutateResult, context);
     },
     ...options,
@@ -105,133 +130,37 @@ export function useUpdatePreparingTime(
   >,
 ) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ orderId, data }) =>
-      orderServices.updatePreparingTime(orderId, data),
-    onMutate: async (variables) => {
-      console.log("[useUpdatePreparingTime] onMutate:start", {
-        orderId: variables.orderId,
-        preparingTimeInMinutes: variables.data.preparingTimeInMinutes,
-      });
-      await queryClient.cancelQueries({ queryKey: inProgressOrdersKeys.lists() });
-
-      const previousInProgress = queryClient.getQueriesData<
-        InfiniteData<PaginatedOrdersResponse>
-      >({ queryKey: inProgressOrdersKeys.lists() });
-
-      queryClient.setQueriesData<InfiniteData<PaginatedOrdersResponse>>(
-        { queryKey: inProgressOrdersKeys.lists() },
-        (previous) => {
-          if (!previous) {
-            console.log("[useUpdatePreparingTime] onMutate:missing previous cache", {
-              orderId: variables.orderId,
-            });
-            return previous;
-          }
-          if (!Array.isArray(previous.pages)) {
-            console.log("[useUpdatePreparingTime] onMutate:invalid pages", {
-              orderId: variables.orderId,
-              previousType: typeof previous,
-              hasPages: Object.prototype.hasOwnProperty.call(previous, "pages"),
-            });
-            return previous;
-          }
-
-          return {
-            ...previous,
-            pages: previous.pages.map((page, pageIndex) => ({
-              ...page,
-              items: (Array.isArray(page.items) ? page.items : (() => {
-                console.log("[useUpdatePreparingTime] onMutate:page items undefined", {
-                  orderId: variables.orderId,
-                  pageIndex,
-                  pageKeys: Object.keys(page ?? {}),
-                });
-                return [];
-              })()).map((item) => {
-                if (item.orderId !== variables.orderId) return item;
-
-                const currentRemaining = item.remainingSeconds ?? 0;
-                const bumpedRemaining = Math.max(currentRemaining, 0) + 5 * 60;
-
-                return {
-                  ...item,
-                  preparingTimeInMinutes: variables.data.preparingTimeInMinutes,
-                  remainingSeconds: bumpedRemaining,
-                };
-              }),
-            })),
-          };
-        },
-      );
-
-      return { previousInProgress };
-    },
-    onError: (error, variables, context) => {
-      console.log("[useUpdatePreparingTime] onError", {
-        orderId: variables.orderId,
-        preparingTimeInMinutes: variables.data.preparingTimeInMinutes,
-        errorName: error?.name,
-        errorMessage: error?.message,
-      });
-      context?.previousInProgress?.forEach(([queryKey, data]) => {
-        queryClient.setQueryData(queryKey, data);
-      });
-      options?.onError?.(error, variables, context);
-    },
+  return useMutation<UpdatePreparingTimeResponse, ApiError, { orderId: string; data: UpdatePreparingTimeRequest }>({
+    ...options,
+    mutationFn: ({ orderId, data }: { orderId: string; data: UpdatePreparingTimeRequest }) => orderServices.updatePreparingTime(orderId, data),
     onSuccess: (response, variables, onMutateResult, context) => {
-      console.log("[useUpdatePreparingTime] onSuccess", {
-        orderId: variables.orderId,
-        response,
-      });
-      // Keep UI responsive by updating the local in-progress cache immediately.
+      // Keep the visible card in place; update its confirmed duration, then fetch the
+      // persisted start/deadline so the timer cannot drift after a background resume.
       queryClient.setQueriesData<InfiniteData<PaginatedOrdersResponse>>(
         { queryKey: inProgressOrdersKeys.lists() },
         (previous) => {
-          if (!previous) {
-            console.log("[useUpdatePreparingTime] onSuccess:missing previous cache", {
-              orderId: variables.orderId,
-            });
-            return previous;
-          }
-          if (!Array.isArray(previous.pages)) {
-            console.log("[useUpdatePreparingTime] onSuccess:invalid pages", {
-              orderId: variables.orderId,
-              previousType: typeof previous,
-              hasPages: Object.prototype.hasOwnProperty.call(previous, "pages"),
-            });
-            return previous;
-          }
-
+          if (!previous || !Array.isArray(previous.pages)) return previous;
           return {
             ...previous,
-            pages: previous.pages.map((page, pageIndex) => ({
+            pages: previous.pages.map((page) => ({
               ...page,
-              items: (Array.isArray(page.items) ? page.items : (() => {
-                console.log("[useUpdatePreparingTime] onSuccess:page items undefined", {
-                  orderId: variables.orderId,
-                  pageIndex,
-                  pageKeys: Object.keys(page ?? {}),
-                });
-                return [];
-              })()).map((item) => {
+              items: page.items.map((item) => {
                 if (item.orderId !== variables.orderId) return item;
-
-                const currentRemaining = item.remainingSeconds ?? 0;
-                const bumpedRemaining = Math.max(currentRemaining, 0) + 5 * 60;
-
-                return {
-                  ...item,
-                  preparingTimeInMinutes: response.preparingTimeInMinutes,
-                  remainingSeconds: bumpedRemaining,
-                };
+                const oldDuration = Math.max(0, item.preparingTimeInMinutes ?? 0);
+                const newDuration = response.preparingTimeInMinutes;
+                const remainingSeconds = item.preparationStartedAt
+                  ? item.remainingSeconds
+                  : oldDuration > 0
+                    ? Math.max(0, (item.remainingSeconds ?? oldDuration * 60) + (newDuration - oldDuration) * 60)
+                    : newDuration * 60;
+                return { ...item, status: response.status, preparingTimeInMinutes: newDuration, remainingSeconds };
               }),
             })),
           };
         },
       );
+      void queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
       options?.onSuccess?.(response, variables, onMutateResult, context);
     },
-    ...options,
   });
 }

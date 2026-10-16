@@ -11,7 +11,7 @@ import { Order } from "../../api/orderServicesTypes";
 import RejectOrderModal from "../../components/RejectOrderModal";
 import type { OrderScreenProps } from './orderFlowTypes';
 
-export default function InProgressScreen({ initialOrderType, onOrderTypeChange, onOrderFlow }: OrderScreenProps) {
+export default function InProgressScreen({ initialOrderType, onOrderTypeChange, onOrderFlow, focusOrderId, onClearOrderFocus, highlightOrderCode }: OrderScreenProps) {
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   const [rejectingOrderCode, setRejectingOrderCode] = useState<string | null>(null);
   const [rejectingOrderType, setRejectingOrderType] = useState<Order['orderType']>('delivery');
@@ -76,6 +76,9 @@ export default function InProgressScreen({ initialOrderType, onOrderTypeChange, 
   return (
     <>
       <GenericOrderList
+        highlightOrderCode={highlightOrderCode}
+        focusOrderId={focusOrderId}
+        onClearOrderFocus={onClearOrderFocus}
         useOrdersHook={useInProgressOrders}
         renderActions={renderActions}
         initialOrderType={initialOrderType}

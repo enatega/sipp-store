@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { ensureStoreNotificationChannels } from './orderNotificationChannels';
 
 let cachedToken: string | null = null;
 let inFlightTokenPromise: Promise<string | null> | null = null;
@@ -16,10 +17,12 @@ function getEasProjectId(): string | undefined {
 async function ensureAndroidNotificationChannel() {
   if (Platform.OS !== "android") return;
 
+  await ensureStoreNotificationChannels();
+
   await Notifications.setNotificationChannelAsync("default", {
     name: "default",
     importance: Notifications.AndroidImportance.MAX,
-    sound: "beep3.mp3",
+    sound: "default",
   });
 }
 

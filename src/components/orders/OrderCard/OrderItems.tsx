@@ -209,6 +209,16 @@ export default function OrderItems({ items, totalAmount, orderSummary, theme }: 
               <Text style={[styles.itemName, { color: theme.colors.gray900 }]} weight="semiBold">
                 {item.name}
               </Text>
+              {item.itemNote?.trim() ? (
+                <View style={[styles.itemNote, { backgroundColor: theme.colors.gray50 }]}>
+                  <Text style={[styles.itemNoteLabel, { color: theme.colors.gray600 }]} weight="semiBold">
+                    {t('order_card_item_note')}
+                  </Text>
+                  <Text style={[styles.itemNoteText, { color: theme.colors.gray900 }]}>
+                    {item.itemNote.trim()}
+                  </Text>
+                </View>
+              ) : null}
               {parsedOptions.length > 0 ? (
                 <>
                   <Pressable

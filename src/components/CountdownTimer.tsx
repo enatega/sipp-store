@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Text from './Text';
-import { StyleProp, TextStyle } from 'react-native';
+import { AppState, StyleProp, TextStyle } from 'react-native';
 
 type Props = {
     startTimeMs?: number | null;
@@ -15,27 +15,24 @@ export default function CountdownTimer({
     remainingSecondsOverride,
     style,
 }: Props) {
-    const [remainingSeconds, setRemainingSeconds] = useState(0);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
-        const shouldUseRemainingOverride =
-            typeof remainingSecondsOverride === "number" &&
-            (remainingSecondsOverride > 0 || totalMinutes <= 0);
-
-        const initialRemaining =
-            shouldUseRemainingOverride
-                ? Math.max(0, remainingSecondsOverride)
-                : Math.max(0, totalMinutes * 60);
-        setRemainingSeconds(initialRemaining);
-
-        intervalRef.current = setInterval(() => {
-            setRemainingSeconds((prev) => Math.max(0, prev - 1));
-        }, 1000);
+        setNow(Date.now());
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') setNow(Date.now());
+        });
         return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
+            clearInterval(interval);
+            subscription.remove();
         };
     }, [startTimeMs, totalMinutes, remainingSecondsOverride]);
+
+    const durationSeconds = Math.max(0, totalMinutes * 60);
+    const remainingSeconds = startTimeMs != null && Number.isFinite(startTimeMs)
+        ? Math.max(0, Math.ceil((startTimeMs + durationSeconds * 1000 - now) / 1000))
+        : Math.max(0, remainingSecondsOverride ?? durationSeconds);
 
     const formatTime = (totalSeconds: number) => {
         const hours = Math.floor(totalSeconds / 3600);

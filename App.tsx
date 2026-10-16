@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 import QueryProvider from './src/providers/QueryProvider';
@@ -27,6 +27,7 @@ Notifications.setNotificationHandler({
 
 function ThemedApp() {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { t } = useTranslations('app');
   const [newOrderNotice, setNewOrderNotice] = React.useState<string | null>(null);
@@ -94,10 +95,16 @@ function ThemedApp() {
               queueOrderNotificationNavigation(newOrderNotice);
               setNewOrderNotice(null);
             }}
-            style={[styles.orderNotice, { backgroundColor: theme.colors.surface, borderColor: theme.colors.sky600 }]}
+            style={[styles.orderNotice, {
+              top: insets.top + 8,
+              left: insets.left + 16,
+              right: insets.right + 16,
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.sky600,
+            }]}
           >
             <Text style={[styles.orderNoticeTitle, { color: theme.colors.gray900 }]}>{t('orders_tab_new')}</Text>
-            <Text style={{ color: theme.colors.gray900 }}>#{newOrderNotice.slice(0, 8).toUpperCase()} · {t('notification_order_manage')}</Text>
+            <Text style={{ color: theme.colors.gray900 }}>#{newOrderNotice.slice(0, 8).toUpperCase()}</Text>
           </Pressable>
         )}
       </SafeAreaView>
@@ -127,7 +134,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   orderNotice: {
-    position: 'absolute', top: 8, left: 16, right: 16,
+    position: 'absolute', zIndex: 30,
     borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
     elevation: 4,
   },

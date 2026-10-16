@@ -30,15 +30,18 @@ import { getCachedStoreOrder, moveStoreOrderAfterConfirmation } from './storeOrd
 
 // ─── Accept Order ─────────────────────────────────────────────────
 export function useAcceptOrder(
-  options?: UseMutationOptions<AcceptOrderResponse, ApiError, { orderId: string; order: Order }>,
+  options?: UseMutationOptions<AcceptOrderResponse, ApiError, { orderId: string; order: Order; preparingTimeInMinutes: number }>,
 ) {
   const queryClient = useQueryClient();
-  return useMutation<AcceptOrderResponse, ApiError, { orderId: string; order: Order }>({
-    mutationFn: ({ orderId }) => orderServices.acceptOrder(orderId),
+  return useMutation<AcceptOrderResponse, ApiError, { orderId: string; order: Order; preparingTimeInMinutes: number }>({
+    mutationFn: ({ orderId, preparingTimeInMinutes }) => orderServices.acceptOrder(orderId, preparingTimeInMinutes),
     onSuccess: (data, variables, onMutateResult, context) => {
       moveStoreOrderAfterConfirmation(queryClient, ['new'], 'inProgress', variables.orderId, {
         status: data.status,
         canAccept: false,
+        preparingTimeInMinutes: data.preparingTimeInMinutes,
+        preparationStartedAt: data.preparationStartedAt,
+        remainingSeconds: data.remainingSeconds,
       }, variables.order);
       void queryClient.invalidateQueries({ queryKey: newOrdersKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: inProgressOrdersKeys.lists() });
@@ -153,7 +156,11 @@ export function useUpdatePreparingTime(
                   : oldDuration > 0
                     ? Math.max(0, (item.remainingSeconds ?? oldDuration * 60) + (newDuration - oldDuration) * 60)
                     : newDuration * 60;
-                return { ...item, status: response.status, preparingTimeInMinutes: newDuration, remainingSeconds };
+                return {
+                  ...item, status: response.status, preparingTimeInMinutes: newDuration,
+                  preparationStartedAt: response.preparationStartedAt ?? item.preparationStartedAt,
+                  remainingSeconds: response.remainingSeconds ?? remainingSeconds,
+                };
               }),
             })),
           };

@@ -4,7 +4,6 @@ import { useNewOrders } from "../../hooks/useOrderQueries";
 import {
   useAcceptOrder,
   useRejectOrder,
-  useUpdatePreparingTime,
 } from "../../hooks/useOrderMutations";
 import SetPreparingTimeModal from "../../components/SetPreparingTimeModal";
 import RejectOrderModal from "../../components/RejectOrderModal";
@@ -25,7 +24,6 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
 
   const acceptMutation = useAcceptOrder();
   const rejectMutation = useRejectOrder();
-  const updateTimeMutation = useUpdatePreparingTime();
 
   const handleAccept = (order: Order) => {
     setPendingOrder(order);
@@ -75,14 +73,9 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
     setPendingOrder(null);
 
     try {
-      await acceptMutation.mutateAsync({ orderId, order: pendingOrder });
+      await acceptMutation.mutateAsync({ orderId, order: pendingOrder, preparingTimeInMinutes: minutes });
       onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'accepted' });
-      void updateTimeMutation.mutateAsync({
-        orderId,
-        data: { preparingTimeInMinutes: minutes },
-      }).catch(() => {
-        onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'acceptedNeedsTime', navigate: false });
-      });
+
     } catch {
       onOrderFlow({ tab: 'new', orderType, orderCode, notice: 'failed' });
     } finally {

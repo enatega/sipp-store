@@ -126,7 +126,10 @@ export interface PaginatedOrdersResponse {
 export type AcceptOrderResponse = {
   message: string;
   orderId: string;
-  status: OrderStatus.ACCEPTED;
+  status: OrderStatus.ACCEPTED | OrderStatus.PREPARING;
+  preparingTimeInMinutes: number | null;
+  preparationStartedAt: string | null;
+  remainingSeconds: number | null;
 };
 
 export type RejectOrderResponse = {
@@ -159,6 +162,8 @@ export type UpdatePreparingTimeRequest = {
 export type UpdatePreparingTimeResponse = {
   message: string;
   orderId: string;
-  status: OrderStatus.PREPARING;
+  status: OrderStatus;
   preparingTimeInMinutes: number;
+  preparationStartedAt?: string | null;
+  remainingSeconds?: number | null;
 };

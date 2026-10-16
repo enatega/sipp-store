@@ -43,6 +43,7 @@ export interface OrderItem {
   unitPrice: number;
   totalPrice: number;
   selectedOptions: unknown;
+  itemNote?: string | null;
 }
 
 export interface OrderSummary {
@@ -65,6 +66,8 @@ export interface Order {
   orderId: string;
   orderCode: string;
   status: OrderStatus;
+  rejectionReason?: string | null;
+  storeAcceptanceRemindedAt?: string | null;
   statusLabel: string; // e.g. "New Order", "In Progress", "Ready", "Pickup", "Completed"
   orderType: OrderType;
   customerName: string;
@@ -123,7 +126,10 @@ export interface PaginatedOrdersResponse {
 export type AcceptOrderResponse = {
   message: string;
   orderId: string;
-  status: OrderStatus.ACCEPTED;
+  status: OrderStatus.ACCEPTED | OrderStatus.PREPARING;
+  preparingTimeInMinutes: number | null;
+  preparationStartedAt: string | null;
+  remainingSeconds: number | null;
 };
 
 export type RejectOrderResponse = {
@@ -156,6 +162,8 @@ export type UpdatePreparingTimeRequest = {
 export type UpdatePreparingTimeResponse = {
   message: string;
   orderId: string;
-  status: OrderStatus.PREPARING;
+  status: OrderStatus;
   preparingTimeInMinutes: number;
+  preparationStartedAt?: string | null;
+  remainingSeconds?: number | null;
 };

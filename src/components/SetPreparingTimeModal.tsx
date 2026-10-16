@@ -1,202 +1,69 @@
-import React, { useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Dimensions,
-} from "react-native";
-import { AntDesign } from "@expo/vector-icons";
-import { useAppTheme } from "../theme/ThemeProvider";
-import { useTranslations } from "../localization/LocalizationProvider";
+import React, { useState } from 'react';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Text from './Text';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { useTranslations } from '../localization/LocalizationProvider';
 
-const { width } = Dimensions.get("window");
-const CHIP_WIDTH = 82;
-const ROW_GAP = 15;
+type Props = { visible: boolean; onClose: () => void; onDone: (minutes: number) => void };
+const TIME_OPTIONS = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 
-type Props = {
-  visible: boolean;
-  onClose: () => void;
-  onDone: (minutes: number) => void;
-};
-
-export default function SetPreparingTimeModal({
-  visible,
-  onClose,
-  onDone,
-}: Props) {
+export default function SetPreparingTimeModal({ visible, onClose, onDone }: Props) {
   const { theme } = useAppTheme();
-  const { t } = useTranslations("app");
+  const { t } = useTranslations('app');
+  const insets = useSafeAreaInsets();
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
 
-  const timeOptions = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-
-  const handleDone = () => {
-    if (selectedTime !== null) {
-      console.log("[SetPreparingTimeModal] Done clicked", {
-        selectedTimeInMinutes: selectedTime,
-      });
-      onDone(selectedTime);
-      setSelectedTime(null);
-    }
-  };
-
-  const handleClose = () => {
+  const close = () => {
     setSelectedTime(null);
     onClose();
   };
+  const save = () => {
+    if (selectedTime === null) return;
+    onDone(selectedTime);
+    setSelectedTime(null);
+  };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={modalStyles.overlay} onPress={handleClose}>
-        <View
-          style={[
-            modalStyles.container,
-            { backgroundColor: theme.colors.background },
-          ]}
-        >
-          {/* Header: center title, close button on right */}
-          <View style={modalStyles.header}>
-            <View style={modalStyles.leftSpacer} />
-            <Text style={modalStyles.title}>{t("set_preparing_time")}</Text>
-            <Pressable
-              style={modalStyles.closeButton}
-              onPress={handleClose}
-              hitSlop={10}
-            >
-              <AntDesign name="close-circle" size={24} color={theme.colors.gray600} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+      <View style={[styles.overlay, { backgroundColor: theme.colors.modalBackdrop }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={t('cancel')} />
+        <View style={[styles.sheet, { backgroundColor: theme.colors.surface, paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+          <View style={styles.header}>
+            <Text variant="subtitle" weight="bold" color={theme.colors.gray900} style={styles.title}>{t('set_preparing_time')}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('cancel')} onPress={close} style={styles.close}>
+              <Feather name="x" size={21} color={theme.colors.gray600} />
             </Pressable>
           </View>
-
-          {/* Chips grid */}
-          <View style={modalStyles.grid}>
-            {timeOptions?.map((min) => {
-              const isSelected = selectedTime === min;
+          <Text variant="body" color={theme.colors.gray600}>{t('set_preparing_time_hint')}</Text>
+          <View style={styles.grid}>
+            {TIME_OPTIONS.map((minutes) => {
+              const selected = minutes === selectedTime;
               return (
-                <Pressable
-                  key={min}
-                  style={[
-                    modalStyles.timeButton,
-                    {
-                      width: CHIP_WIDTH,
-                      borderColor: "transparent",
-                      backgroundColor: isSelected ? "#111827" : theme.colors.gray200,
-                    },
-                  ]}
-                  onPress={() => {
-                    console.log("[SetPreparingTimeModal] Time selected", {
-                      selectedTimeInMinutes: min,
-                    });
-                    setSelectedTime(min);
-                  }}
-                >
-                  <Text
-                    style={[
-                      modalStyles.timeText,
-                      { color: isSelected ? theme.colors.buttonText : theme.colors.gray600 },
-                    ]}
-                  >
-                    {min} min
-                  </Text>
+                <Pressable key={minutes} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelectedTime(minutes)} style={[styles.option, { backgroundColor: selected ? theme.colors.primary : theme.colors.gray50, borderColor: selected ? theme.colors.primary : theme.colors.gray200 }]}>
+                  <Text variant="body" weight={selected ? 'bold' : 'medium'} color={selected ? theme.colors.buttonText : theme.colors.gray900}>{minutes} min</Text>
                 </Pressable>
               );
             })}
           </View>
-
-          {/* Full‑width Done button */}
-          <Pressable
-            style={[
-              modalStyles.doneButton,
-              {
-                backgroundColor: theme.colors.primary,
-                opacity: selectedTime !== null ? 1 : 0.6,
-              },
-            ]}
-            onPress={handleDone}
-            disabled={selectedTime === null}
-          >
-            <Text
-              style={[
-                modalStyles.doneText,
-                { color: selectedTime !== null ? theme.colors.buttonText : theme.colors.gray500 },
-              ]}
-            >
-              {t("done")}
-            </Text>
+          <Pressable accessibilityRole="button" disabled={selectedTime === null} onPress={save} style={[styles.save, { backgroundColor: theme.colors.primary }, selectedTime === null && styles.disabled]}>
+            <Text variant="body" weight="bold" color={theme.colors.buttonText}>{t('set_preparing_time_save')}</Text>
           </Pressable>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
 
-const modalStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(17,17,17,0.5)",
-    justifyContent: "flex-end",
-  },
-  container: {
-    width: width,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 24,
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 16,
-  },
-  leftSpacer: {
-    width: 32,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    flex: 1,
-  },
-  closeButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: ROW_GAP,
-    marginBottom: 30,
-  },
-  timeButton: {
-    width: CHIP_WIDTH,
-    height: 48,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timeText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  doneButton: {
-    width: '100%',
-    paddingVertical: 15,
-    borderRadius: 40,
-    alignItems: "center",
-  },
-  doneText: {
-    fontWeight: "500",
-    fontSize: 16,
-  },
+const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  sheet: { width: '100%', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, gap: 14 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  title: { flex: 1 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
+  option: { width: '31%', minHeight: 48, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  save: { minHeight: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  disabled: { opacity: 0.45 },
 });

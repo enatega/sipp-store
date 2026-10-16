@@ -61,15 +61,17 @@ export function useLogoutMutation(options?: UseMutationOptions<void, ApiError, v
 
   return useMutation<void, ApiError, void>({
     mutationFn: async () => {
-      const token = await pushTokenStorage.get();
-      if (token) {
-        await Promise.race([
-          apiClient.post('/users/push-token/unregister', { token }).catch(() => undefined),
-          new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-        ]);
+      await pushTokenStorage.beginLogout();
+      try {
+        const token = await pushTokenStorage.get();
+        if (token) {
+          await apiClient.post('/users/push-token/unregister', { token });
+        }
+        await pushTokenStorage.clear();
+        await clearSession();
+      } finally {
+        pushTokenStorage.cancelLogout();
       }
-      await pushTokenStorage.clear();
-      await clearSession();
     },
     ...options,
     onSuccess: async (data, variables, onMutateResult, context) => {

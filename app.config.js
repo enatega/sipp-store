@@ -25,9 +25,6 @@ module.exports = {
           backgroundColor: "#ffffff",
         },
       },
-      infoPlist: {
-        UIBackgroundModes: ["audio"],
-      },
     },
     android: {
       adaptiveIcon: {
@@ -87,7 +84,7 @@ module.exports = {
       [
         "expo-notifications",
         {
-          sounds: ["./src/assets/sound/beep3.mp3"],
+          sounds: ["./src/assets/sound/beep3.mp3", "./src/assets/sound/new_order_chime.wav", "./src/assets/sound/new_order_beep.wav", "./src/assets/sound/new_order_beep_5s.wav"],
         },
       ],
     ],

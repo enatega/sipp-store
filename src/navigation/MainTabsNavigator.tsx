@@ -7,7 +7,7 @@ import EarningsTabScreen from '../screens/EarningsTabScreen';
 import ProfileMainTabScreen from '../screens/ProfileMainTabScreen';
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  HomeTab: { orderId?: string } | undefined;
   WalletTab: undefined;
   EarningsTab: undefined;
   ProfileTab: undefined;

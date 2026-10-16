@@ -11,7 +11,6 @@ import EarningsDetailScreen from '../screens/EarningsDetailScreen';
 import EarningsOrderDetailScreen from '../screens/EarningsOrderDetailScreen';
 import StoreChatScreen from '../screens/StoreChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
-import StoreOrderDetailScreen from '../screens/StoreOrderDetailScreen';
 import { MainStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -22,7 +21,6 @@ export default function MainNavigator() {
       <Stack.Screen name="Home" component={MainTabsNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="Language" component={LanguageScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="StoreOrderDetail" component={StoreOrderDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProfileFieldEdit" component={ProfileFieldEditScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BankManagement" component={BankManagementScreen} options={{ headerShown: false }} />

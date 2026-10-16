@@ -1,19 +1,18 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import GenericOrderList from "../../components/orders/GenericOrderList";
 import { useNewOrders } from "../../hooks/useOrderQueries";
 import {
   useAcceptOrder,
   useRejectOrder,
-  useUpdateOrderStatus,
-  useUpdatePreparingTime,
 } from "../../hooks/useOrderMutations";
 import SetPreparingTimeModal from "../../components/SetPreparingTimeModal";
 import RejectOrderModal from "../../components/RejectOrderModal";
-import { Order, OrderStatus } from "../../api/orderServicesTypes";
-import { startOrderAlertLoop, stopOrderAlertLoop } from "../../hooks/orderAlertSound";
+import { Order } from "../../api/orderServicesTypes";
 import type { OrderScreenProps } from './orderFlowTypes';
+import { useAuth } from '../../auth/AuthProvider';
+import { alertForNewStoreOrder } from '../../hooks/orderAlertCoordinator';
 
-export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, onOrderFlow, newOrderCounts }: OrderScreenProps) {
+export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, onOrderFlow, newOrderCounts, focusOrderId, onClearOrderFocus, highlightOrderCode }: OrderScreenProps) {
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   const [rejectingOrderCode, setRejectingOrderCode] = useState<string | null>(null);
@@ -21,11 +20,10 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
   const [modalVisible, setModalVisible] = useState(false);
   const acceptingOrderIdsRef = useRef<Set<string>>(new Set());
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<string[]>([]);
+  const { session } = useAuth();
 
   const acceptMutation = useAcceptOrder();
   const rejectMutation = useRejectOrder();
-  const updateStatusMutation = useUpdateOrderStatus();
-  const updateTimeMutation = useUpdatePreparingTime();
 
   const handleAccept = (order: Order) => {
     setPendingOrder(order);
@@ -74,33 +72,16 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
     setModalVisible(false);
     setPendingOrder(null);
 
-    let accepted = false;
-    let needsTime = false;
     try {
-      await acceptMutation.mutateAsync(orderId);
-      accepted = true;
-      try {
-        await updateStatusMutation.mutateAsync({
-          orderId,
-          data: { status: OrderStatus.PREPARING },
-        });
-        await updateTimeMutation.mutateAsync({
-          orderId,
-          data: { preparingTimeInMinutes: minutes },
-        });
-      } catch {
-        needsTime = true;
-      }
+      await acceptMutation.mutateAsync({ orderId, order: pendingOrder, preparingTimeInMinutes: minutes });
+      onOrderFlow({ tab: 'inProgress', orderType, orderCode, notice: 'accepted' });
+
     } catch {
-      accepted = false;
+      onOrderFlow({ tab: 'new', orderType, orderCode, notice: 'failed' });
     } finally {
       acceptingOrderIdsRef.current.delete(orderId);
       setAcceptingOrderIds((ids) => ids.filter((id) => id !== orderId));
     }
-
-    onOrderFlow(accepted
-      ? { tab: 'inProgress', orderType, orderCode, notice: needsTime ? 'acceptedNeedsTime' : 'accepted' }
-      : { tab: 'new', orderType, orderCode, notice: 'failed' });
   };
 
   const closeModal = () => {
@@ -115,29 +96,30 @@ export default function NewOrdersScreen({ initialOrderType, onOrderTypeChange, o
     isRejecting: rejectMutation.isPending && rejectingOrderId === order.orderId,
   });
 
-  const handleOrdersDataChange = useCallback((orders: Order[]) => {
-    const hasPendingActionableOrder = orders.some((order) =>
-      order.status === OrderStatus.PENDING && order.canAccept,
-    );
-
-    if (hasPendingActionableOrder) {
-      void startOrderAlertLoop();
-      return;
-    }
-
-    void stopOrderAlertLoop();
-  }, []);
-
   return (
     <>
       <GenericOrderList
+        highlightOrderCode={highlightOrderCode}
+        focusOrderId={focusOrderId}
+        onClearOrderFocus={onClearOrderFocus}
         useOrdersHook={useNewOrders}
         renderActions={renderActions}
         initialOrderType={initialOrderType}
         onOrderTypeChange={onOrderTypeChange}
-        onOrdersDataChange={handleOrdersDataChange}
         orderTypeCounts={newOrderCounts}
         autoScrollToTopOnNewItem
+        onNewOrdersFromManualRefresh={(discovered) => {
+          if (!session.user?.id) return;
+          for (const order of [...discovered].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))) {
+            void alertForNewStoreOrder({
+              userId: session.user.id,
+              orderId: order.orderId,
+              occurredAt: order.createdAt,
+              allowOlderEvent: true,
+              showNotice: false,
+            });
+          }
+        }}
       />
       <SetPreparingTimeModal
         visible={modalVisible}

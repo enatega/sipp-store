@@ -39,7 +39,9 @@ export default function ProfileScreen() {
   const { data: profileData, isLoading: profileLoading } = useProfileQuery();
   const { data: availabilityData, isLoading: availabilityLoading } = useAvailabilityQuery();
   const updateAvailability = useUpdateAvailability();
-  const logoutMutation = useLogoutMutation();
+  const logoutMutation = useLogoutMutation({
+    onError: () => Alert.alert(t("auth_logout"), t("auth_logout_error")),
+  });
   const notificationCount = useQuery({
     queryKey: ['store-notification-count'],
     queryFn: () => apiClient.get<{ unreadCount: number }>('/apps/deliveries/users-notifications/count-unread'),

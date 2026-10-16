@@ -13,9 +13,9 @@ export function queueOrderNotificationNavigation(value: unknown) {
 
 export function flushPendingOrderNotification() {
   if (!pendingOrderId || !notificationNavigationRef.isReady()) return;
-  const mainReady = notificationNavigationRef.getRootState()?.routes.some((route) => route.name === 'Home' || route.name === 'StoreOrderDetail');
+  const mainReady = notificationNavigationRef.getRootState()?.routes.some((route) => route.name === 'Home');
   if (!mainReady) return;
   const orderId = pendingOrderId;
   pendingOrderId = null;
-  notificationNavigationRef.navigate('StoreOrderDetail', { orderId });
+  notificationNavigationRef.navigate('Home', { screen: 'HomeTab', params: { orderId } });
 }

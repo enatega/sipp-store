@@ -1,53 +1,56 @@
-import React from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme/ThemeProvider';
+import { useTranslations } from '../../localization/LocalizationProvider';
 import Text from '../Text';
 
 type Props = {
   visible: boolean;
   title: string;
   message: string;
-  buttonLabel: string;
   tone: 'success' | 'warning' | 'error';
   orderCode?: string;
   onClose: () => void;
 };
 
-export default function OrderActionNotice({ visible, title, message, buttonLabel, tone, orderCode, onClose }: Props) {
+export default function OrderActionNotice({ visible, title, message, tone, orderCode, onClose }: Props) {
   const { theme } = useAppTheme();
+  const { t } = useTranslations('app');
   const insets = useSafeAreaInsets();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (!visible) return;
+    const timeout = setTimeout(() => onCloseRef.current(), tone === 'warning' ? 6000 : 3500);
+    return () => clearTimeout(timeout);
+  }, [visible, tone, title, orderCode]);
+
+  if (!visible) return null;
   const accent = tone === 'error' ? theme.colors.red500 : tone === 'warning' ? theme.colors.amber800 : theme.colors.green600;
-  const tint = tone === 'error' ? theme.colors.gray50 : tone === 'warning' ? theme.colors.amber100 : theme.colors.green50;
+  const code = orderCode?.replace(/^#/, '');
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.colors.modalBackdrop, paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={buttonLabel} />
-        <View style={[styles.card, { backgroundColor: theme.colors.surface, shadowColor: theme.colors.shadow }]}>
-          <View style={[styles.icon, { backgroundColor: tint }]}>
-            <Feather name={tone === 'error' ? 'alert-circle' : tone === 'warning' ? 'info' : 'check'} size={25} color={accent} />
-          </View>
-          {orderCode ? <Text variant="caption" weight="semiBold" color={theme.colors.gray600} style={styles.code}>#{orderCode.replace(/^#/, '')}</Text> : null}
-          <Text variant="subtitle" weight="bold" color={theme.colors.gray900} style={styles.title}>{title}</Text>
-          <Text variant="label" color={theme.colors.gray600} style={styles.message}>{message}</Text>
-          <Pressable onPress={onClose} accessibilityRole="button" style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text variant="label" weight="bold" color={theme.colors.buttonText}>{buttonLabel}</Text>
-            <Feather name="arrow-right" size={18} color={theme.colors.buttonText} />
-          </Pressable>
+    <View pointerEvents="box-none" style={[styles.overlay, { bottom: Math.max(insets.bottom, 8) + 8 }]}>
+      <View style={[styles.notice, { backgroundColor: theme.colors.surface, shadowColor: theme.colors.shadow }]} accessibilityRole="alert">
+        <Feather name={tone === 'error' ? 'alert-circle' : tone === 'warning' ? 'clock' : 'check-circle'} size={20} color={accent} />
+        <View style={styles.copy}>
+          <Text variant="body" weight="semiBold" color={theme.colors.gray900} numberOfLines={2}>{title}</Text>
+          {tone !== 'success' ? <Text variant="caption" color={theme.colors.gray600} numberOfLines={2}>{message}</Text> : null}
+          {code ? <Text variant="caption" color={theme.colors.gray600}>#{code}</Text> : null}
         </View>
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={t('order_flow_dismiss')} hitSlop={8} style={styles.dismiss}>
+          <Feather name="x" size={18} color={theme.colors.gray600} />
+        </Pressable>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 16 },
-  card: { width: '100%', maxWidth: 480, alignSelf: 'center', borderRadius: 20, padding: 22, shadowOpacity: 0.16, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  icon: { width: 50, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  code: { marginTop: 14 },
-  title: { marginTop: 5 },
-  message: { marginTop: 7, lineHeight: 21 },
-  button: { minHeight: 50, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: 22 },
+  overlay: { position: 'absolute', left: 16, right: 16, zIndex: 20, alignItems: 'center' },
+  notice: { width: '100%', maxWidth: 480, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 12, shadowOpacity: 0.16, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
+  copy: { flex: 1, gap: 2 },
+  dismiss: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: -6, marginRight: -6 },
 });

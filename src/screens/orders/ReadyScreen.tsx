@@ -5,7 +5,7 @@ import { useUpdateOrderStatus } from "../../hooks/useOrderMutations";
 import { Order, OrderStatus } from "../../api/orderServicesTypes";
 import type { OrderScreenProps } from './orderFlowTypes';
 
-export default function ReadyScreen({ initialOrderType, onOrderTypeChange, onOrderFlow }: OrderScreenProps) {
+export default function ReadyScreen({ initialOrderType, onOrderTypeChange, onOrderFlow, focusOrderId, onClearOrderFocus, highlightOrderCode }: OrderScreenProps) {
   const updateStatus = useUpdateOrderStatus();
 
   const handleConfirmPickup = (orderId: string, orderCode: string) => {
@@ -25,6 +25,9 @@ export default function ReadyScreen({ initialOrderType, onOrderTypeChange, onOrd
 
   return (
     <GenericOrderList
+      highlightOrderCode={highlightOrderCode}
+      focusOrderId={focusOrderId}
+      onClearOrderFocus={onClearOrderFocus}
       useOrdersHook={useReadyOrders}
       renderActions={renderActions}
       initialOrderType={initialOrderType}

@@ -6,9 +6,13 @@ export type OrderFlowResult = {
   orderType: OrderTypeFilter;
   orderCode?: string;
   notice: 'accepted' | 'acceptedNeedsTime' | 'ready' | 'collected' | 'completed' | 'rejected' | 'timeUpdated' | 'failed';
+  navigate?: boolean;
 };
 
 export type OrderScreenProps = {
+  highlightOrderCode?: string | null;
+  focusOrderId?: string;
+  onClearOrderFocus: () => void;
   initialOrderType: OrderTypeFilter;
   onOrderTypeChange: (orderType: OrderTypeFilter) => void;
   onOrderFlow: (result: OrderFlowResult) => void;

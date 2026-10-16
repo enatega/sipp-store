@@ -27,7 +27,9 @@ export const buildLightColors = (brandColors: BrandColors = defaultBrandColors) 
   amber100: '#FEF3C7',
   amber800: '#92400E',
   red500: '#EF4444',
+  red800: '#991B1B',
   shadow: 'rgba(17, 24, 39, 0.12)',
+  modalBackdrop: 'rgba(17, 24, 39, 0.32)',
 });
 
 export const buildDarkColors = (brandColors: BrandColors = defaultBrandColors): ThemeColors => ({
@@ -56,7 +58,9 @@ export const buildDarkColors = (brandColors: BrandColors = defaultBrandColors): 
   amber100: '#FEF3C7',
   amber800: '#92400E',
   red500: '#EF4444',
+  red800: '#B91C1C',
   shadow: 'rgba(2, 6, 23, 0.45)',
+  modalBackdrop: 'rgba(2, 6, 23, 0.62)',
 });
 
 export const lightColors = buildLightColors();

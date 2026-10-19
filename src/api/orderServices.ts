@@ -224,7 +224,7 @@ function normalizeOrdersResponse(response: PaginatedOrdersResponse): PaginatedOr
       limit: response?.limit,
       total: response?.total,
       itemsType: typeof (response as unknown as Record<string, unknown>)?.items,
-      rawItems: (response as unknown as Record<string, unknown>)?.items,
+      // Do not log malformed order payloads: they may contain delivery instructions.
     });
   }
 

@@ -160,8 +160,10 @@ export default function OrderCard({
         customerProfileImage={order.customerProfileImage}
         orderType={order.orderType}
         address={displayAddress}
+        isHistoricalFallback={order.deliveryAddressIsHistoricalFallback}
+        addressDetails={order.orderType === "delivery" ? order.deliveryAddressDetails : null}
         addressExtras={order.orderType === "delivery" ? order.deliveryAddressExtras : null}
-        deliveryInstructions={order.orderType === "delivery" ? order.deliveryInstructions : null}
+        deliveryInstructions={order.orderType === "delivery" ? order.courierNote ?? order.deliveryInstructions : null}
         theme={theme}
       />
       <OrderItems

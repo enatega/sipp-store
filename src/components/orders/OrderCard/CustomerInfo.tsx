@@ -1,3 +1,4 @@
+import AddressDetailsView, { type AddressDetails } from '../../AddressDetailsView';
 import React from 'react';
 import { Alert, Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -11,11 +12,13 @@ type Props = {
   orderType: 'delivery' | 'pickup';
   address: string | null;
   addressExtras?: string | null;
+  addressDetails?: AddressDetails | null;
+  isHistoricalFallback?: boolean;
   deliveryInstructions?: string | null;
   theme: Theme;
 };
 
-export default function CustomerInfo({ customerName, customerProfileImage, orderType, address, addressExtras, deliveryInstructions, theme }: Props) {
+export default function CustomerInfo({ customerName, customerProfileImage, orderType, address, addressExtras, addressDetails, isHistoricalFallback, deliveryInstructions, theme }: Props) {
   const { t } = useTranslations('app');
   const image = customerProfileImage && !/placehold\.co|placeholder/i.test(customerProfileImage)
     ? customerProfileImage : null;
@@ -43,14 +46,10 @@ export default function CustomerInfo({ customerName, customerProfileImage, order
           <Text variant="caption" weight="semiBold" color={theme.colors.gray600}>{t('order_card_customer_name')}</Text>
           <Text weight="semiBold" color={theme.colors.gray900} numberOfLines={1}>{customerName || '—'}</Text>
           {address ? <Text variant="caption" color={theme.colors.gray600}>{address}</Text> : null}
-          {orderType === 'delivery' && addressExtras?.trim() ? (
-            <Text variant="caption" color={theme.colors.gray900}>
-              {t('order_card_address_extras')}: {addressExtras.trim()}
-            </Text>
-          ) : null}
+          {orderType === 'delivery' ? <AddressDetailsView isHistoricalFallback={isHistoricalFallback} details={addressDetails} legacyText={addressExtras} /> : null}
           {orderType === 'delivery' && deliveryInstructions?.trim() ? (
             <Text variant="caption" color={theme.colors.gray900}>
-              {t('order_card_delivery_instructions')}: {deliveryInstructions.trim()}
+              {t('address_details_courierMessage')}: {deliveryInstructions.trim()}
             </Text>
           ) : null}
         </View>

@@ -1,3 +1,4 @@
+import type { AddressDetails } from '../api/addressDetailsTypes';
 // ──────────────────────────────────────────────────────────────────
 // Enums
 // ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,8 @@ export interface Order {
   customerProfileImage: string | null;
   customerPhone: string | null;
   deliveryAddress: string | null;
+  deliveryAddressDetails?: AddressDetails | null;
+  deliveryAddressIsHistoricalFallback?: boolean;
   deliveryAddressExtras?: string | null;
   deliveryInstructions?: string | null;
   pickupAddress: string | null;
@@ -82,6 +85,7 @@ export interface Order {
   itemCount: number;
   items: OrderItem[];
   customerComment: string | null;
+  courierNote?: string | null;
   restaurantNote: string | null;
   preparingTimeInMinutes: number | null;
   preparationStartedAt: string | null;

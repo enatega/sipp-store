@@ -1,3 +1,4 @@
+import type { AddressDetails } from '../api/addressDetailsTypes';
 import { io, type ManagerOptions, type Socket, type SocketOptions } from "socket.io-client";
 import { apiConfig } from "../api/apiConfig";
 
@@ -44,6 +45,9 @@ type StoreHomeOrderCardDto = {
   customerName: string;
   customerPhone: string | null;
   deliveryAddress: string | null;
+  deliveryAddressDetails?: AddressDetails | null;
+  deliveryAddressExtras?: string | null;
+  deliveryAddressIsHistoricalFallback?: boolean;
   pickupAddress: string | null;
   orderAmount: number;
   itemCount: number;
@@ -57,6 +61,7 @@ type StoreHomeOrderCardDto = {
     selectedOptions: string | null;
   }>;
   customerComment: string | null;
+  courierNote?: string | null;
   restaurantNote: string | null;
   preparingTimeInMinutes: number | null;
   preparationStartedAt: string | null;
